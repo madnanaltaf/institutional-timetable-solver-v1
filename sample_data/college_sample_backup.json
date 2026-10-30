@@ -1,0 +1,1056 @@
+{
+  "institution": {
+    "name": "Cambridge Science & Technology Academy",
+    "academic_year": "2026 - 2027",
+    "term": "Semester 1 (Academic Year)",
+    "motto": "Innovate, Explore, Excel",
+    "working_days": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday"
+    ],
+    "periods_per_day": 7,
+    "period_times": [
+      {
+        "period_num": 1,
+        "name": "Period 1",
+        "start_time": "08:30",
+        "end_time": "09:15",
+        "is_break": false,
+        "break_label": ""
+      },
+      {
+        "period_num": 2,
+        "name": "Period 2",
+        "start_time": "09:15",
+        "end_time": "10:00",
+        "is_break": false,
+        "break_label": ""
+      },
+      {
+        "period_num": 3,
+        "name": "Period 3",
+        "start_time": "10:00",
+        "end_time": "10:45",
+        "is_break": false,
+        "break_label": ""
+      },
+      {
+        "period_num": 4,
+        "name": "Period 4",
+        "start_time": "10:45",
+        "end_time": "11:30",
+        "is_break": false,
+        "break_label": ""
+      },
+      {
+        "period_num": 5,
+        "name": "Period 5",
+        "start_time": "12:00",
+        "end_time": "12:45",
+        "is_break": false,
+        "break_label": ""
+      },
+      {
+        "period_num": 6,
+        "name": "Period 6",
+        "start_time": "12:45",
+        "end_time": "13:30",
+        "is_break": false,
+        "break_label": ""
+      },
+      {
+        "period_num": 7,
+        "name": "Period 7",
+        "start_time": "13:30",
+        "end_time": "14:15",
+        "is_break": false,
+        "break_label": ""
+      }
+    ],
+    "break_after_period": 4,
+    "break_duration_mins": 30,
+    "period_duration_mins": 45,
+    "start_hour": 8,
+    "start_min": 30
+  },
+  "classes": {
+    "c_10": {
+      "id": "c_10",
+      "name": "Grade 10"
+    },
+    "c_11": {
+      "id": "c_11",
+      "name": "Grade 11"
+    }
+  },
+  "sections": {
+    "s_10a": {
+      "id": "s_10a",
+      "class_id": "c_10",
+      "class_name": "Grade 10",
+      "name": "Section A",
+      "student_count": 32,
+      "home_room_id": "r_101"
+    },
+    "s_10b": {
+      "id": "s_10b",
+      "class_id": "c_10",
+      "class_name": "Grade 10",
+      "name": "Section B",
+      "student_count": 30,
+      "home_room_id": "r_102"
+    },
+    "s_11a": {
+      "id": "s_11a",
+      "class_id": "c_11",
+      "class_name": "Grade 11",
+      "name": "Section A",
+      "student_count": 28,
+      "home_room_id": "r_201"
+    },
+    "s_11b": {
+      "id": "s_11b",
+      "class_id": "c_11",
+      "class_name": "Grade 11",
+      "name": "Section B",
+      "student_count": 29,
+      "home_room_id": "r_202"
+    }
+  },
+  "subjects": {
+    "sub_math": {
+      "id": "sub_math",
+      "code": "MATH",
+      "name": "Mathematics",
+      "subject_type": "Theory",
+      "color": "#2563EB",
+      "requires_lab": false,
+      "default_room_type": "General Classroom",
+      "is_difficult": true,
+      "allowed_double_period": false
+    },
+    "sub_phy": {
+      "id": "sub_phy",
+      "code": "PHY",
+      "name": "Physics (Theory)",
+      "subject_type": "Theory",
+      "color": "#7C3AED",
+      "requires_lab": false,
+      "default_room_type": "General Classroom",
+      "is_difficult": true,
+      "allowed_double_period": false
+    },
+    "sub_phy_lab": {
+      "id": "sub_phy_lab",
+      "code": "PHY-LAB",
+      "name": "Physics Lab Practical",
+      "subject_type": "Practical Lab",
+      "color": "#6D28D9",
+      "requires_lab": true,
+      "default_room_type": "Physics Lab",
+      "is_difficult": false,
+      "allowed_double_period": true
+    },
+    "sub_chem": {
+      "id": "sub_chem",
+      "code": "CHEM",
+      "name": "Chemistry (Theory)",
+      "subject_type": "Theory",
+      "color": "#059669",
+      "requires_lab": false,
+      "default_room_type": "General Classroom",
+      "is_difficult": true,
+      "allowed_double_period": false
+    },
+    "sub_chem_lab": {
+      "id": "sub_chem_lab",
+      "code": "CHEM-LAB",
+      "name": "Chemistry Lab Practical",
+      "subject_type": "Practical Lab",
+      "color": "#047857",
+      "requires_lab": true,
+      "default_room_type": "Chemistry Lab",
+      "is_difficult": false,
+      "allowed_double_period": true
+    },
+    "sub_cs": {
+      "id": "sub_cs",
+      "code": "CS",
+      "name": "Computer Science",
+      "subject_type": "Theory",
+      "color": "#0284C7",
+      "requires_lab": false,
+      "default_room_type": "General Classroom",
+      "is_difficult": false,
+      "allowed_double_period": false
+    },
+    "sub_cs_lab": {
+      "id": "sub_cs_lab",
+      "code": "CS-LAB",
+      "name": "Computer Science Lab",
+      "subject_type": "Practical Lab",
+      "color": "#0369A1",
+      "requires_lab": true,
+      "default_room_type": "Computer Lab",
+      "is_difficult": false,
+      "allowed_double_period": true
+    },
+    "sub_eng": {
+      "id": "sub_eng",
+      "code": "ENG",
+      "name": "English Literature",
+      "subject_type": "Theory",
+      "color": "#D97706",
+      "requires_lab": false,
+      "default_room_type": "General Classroom",
+      "is_difficult": false,
+      "allowed_double_period": false
+    },
+    "sub_bio": {
+      "id": "sub_bio",
+      "code": "BIO",
+      "name": "Biology",
+      "subject_type": "Theory",
+      "color": "#16A34A",
+      "requires_lab": false,
+      "default_room_type": "General Classroom",
+      "is_difficult": false,
+      "allowed_double_period": false
+    },
+    "sub_hist": {
+      "id": "sub_hist",
+      "code": "HIST",
+      "name": "World History",
+      "subject_type": "Theory",
+      "color": "#DC2626",
+      "requires_lab": false,
+      "default_room_type": "General Classroom",
+      "is_difficult": false,
+      "allowed_double_period": false
+    },
+    "sub_pe": {
+      "id": "sub_pe",
+      "code": "PE",
+      "name": "Physical Education",
+      "subject_type": "PE",
+      "color": "#EA580C",
+      "requires_lab": false,
+      "default_room_type": "Sports Ground / Gym",
+      "is_difficult": false,
+      "allowed_double_period": false
+    }
+  },
+  "teachers": {
+    "t_turing": {
+      "id": "t_turing",
+      "name": "Dr. Alan Turing",
+      "code": "AT",
+      "email": "turing@academy.edu",
+      "phone": "",
+      "qualified_subjects": [
+        "sub_math",
+        "sub_cs",
+        "sub_cs_lab"
+      ],
+      "max_periods_per_week": 24,
+      "max_periods_per_day": 5,
+      "max_consecutive_periods": 3,
+      "unavailable_slots": [],
+      "color": "#1D4ED8"
+    },
+    "t_curie": {
+      "id": "t_curie",
+      "name": "Prof. Marie Curie",
+      "code": "MC",
+      "email": "curie@academy.edu",
+      "phone": "",
+      "qualified_subjects": [
+        "sub_chem",
+        "sub_chem_lab",
+        "sub_phy"
+      ],
+      "max_periods_per_week": 24,
+      "max_periods_per_day": 5,
+      "max_consecutive_periods": 3,
+      "unavailable_slots": [],
+      "color": "#047857"
+    },
+    "t_newton": {
+      "id": "t_newton",
+      "name": "Sir Isaac Newton",
+      "code": "IN",
+      "email": "newton@academy.edu",
+      "phone": "",
+      "qualified_subjects": [
+        "sub_phy",
+        "sub_phy_lab",
+        "sub_math"
+      ],
+      "max_periods_per_week": 24,
+      "max_periods_per_day": 5,
+      "max_consecutive_periods": 3,
+      "unavailable_slots": [],
+      "color": "#6D28D9"
+    },
+    "t_lovelace": {
+      "id": "t_lovelace",
+      "name": "Ada Lovelace",
+      "code": "AL",
+      "email": "lovelace@academy.edu",
+      "phone": "",
+      "qualified_subjects": [
+        "sub_cs",
+        "sub_cs_lab",
+        "sub_math"
+      ],
+      "max_periods_per_week": 24,
+      "max_periods_per_day": 5,
+      "max_consecutive_periods": 3,
+      "unavailable_slots": [],
+      "color": "#0284C7"
+    },
+    "t_darwin": {
+      "id": "t_darwin",
+      "name": "Charles Darwin",
+      "code": "CD",
+      "email": "darwin@academy.edu",
+      "phone": "",
+      "qualified_subjects": [
+        "sub_bio",
+        "sub_chem"
+      ],
+      "max_periods_per_week": 24,
+      "max_periods_per_day": 5,
+      "max_consecutive_periods": 3,
+      "unavailable_slots": [],
+      "color": "#15803D"
+    },
+    "t_orwell": {
+      "id": "t_orwell",
+      "name": "George Orwell",
+      "code": "GO",
+      "email": "orwell@academy.edu",
+      "phone": "",
+      "qualified_subjects": [
+        "sub_eng",
+        "sub_hist"
+      ],
+      "max_periods_per_week": 24,
+      "max_periods_per_day": 5,
+      "max_consecutive_periods": 3,
+      "unavailable_slots": [],
+      "color": "#B45309"
+    },
+    "t_franklin": {
+      "id": "t_franklin",
+      "name": "Rosalind Franklin",
+      "code": "RF",
+      "email": "franklin@academy.edu",
+      "phone": "",
+      "qualified_subjects": [
+        "sub_chem",
+        "sub_chem_lab",
+        "sub_bio"
+      ],
+      "max_periods_per_week": 24,
+      "max_periods_per_day": 5,
+      "max_consecutive_periods": 3,
+      "unavailable_slots": [],
+      "color": "#0F766E"
+    },
+    "t_einstein": {
+      "id": "t_einstein",
+      "name": "Albert Einstein",
+      "code": "AE",
+      "email": "einstein@academy.edu",
+      "phone": "",
+      "qualified_subjects": [
+        "sub_phy",
+        "sub_math"
+      ],
+      "max_periods_per_week": 24,
+      "max_periods_per_day": 4,
+      "max_consecutive_periods": 3,
+      "unavailable_slots": [
+        [
+          "Friday",
+          6
+        ],
+        [
+          "Friday",
+          7
+        ]
+      ],
+      "color": "#4338CA"
+    },
+    "t_shakespeare": {
+      "id": "t_shakespeare",
+      "name": "William Shakespeare",
+      "code": "WS",
+      "email": "shakespeare@academy.edu",
+      "phone": "",
+      "qualified_subjects": [
+        "sub_eng"
+      ],
+      "max_periods_per_week": 24,
+      "max_periods_per_day": 5,
+      "max_consecutive_periods": 3,
+      "unavailable_slots": [],
+      "color": "#C2410C"
+    },
+    "t_bolt": {
+      "id": "t_bolt",
+      "name": "Usain Bolt",
+      "code": "UB",
+      "email": "bolt@academy.edu",
+      "phone": "",
+      "qualified_subjects": [
+        "sub_pe"
+      ],
+      "max_periods_per_week": 24,
+      "max_periods_per_day": 4,
+      "max_consecutive_periods": 3,
+      "unavailable_slots": [],
+      "color": "#C05621"
+    }
+  },
+  "classrooms": {
+    "r_101": {
+      "id": "r_101",
+      "name": "Room 101",
+      "room_type": "General Classroom",
+      "capacity": 40,
+      "building": "Wing A"
+    },
+    "r_102": {
+      "id": "r_102",
+      "name": "Room 102",
+      "room_type": "General Classroom",
+      "capacity": 40,
+      "building": "Wing A"
+    },
+    "r_201": {
+      "id": "r_201",
+      "name": "Room 201",
+      "room_type": "General Classroom",
+      "capacity": 40,
+      "building": "Wing B"
+    },
+    "r_202": {
+      "id": "r_202",
+      "name": "Room 202",
+      "room_type": "General Classroom",
+      "capacity": 40,
+      "building": "Wing B"
+    },
+    "lab_cs": {
+      "id": "lab_cs",
+      "name": "Computer Science Lab",
+      "room_type": "Computer Lab",
+      "capacity": 36,
+      "building": "Tech Centre"
+    },
+    "lab_chem": {
+      "id": "lab_chem",
+      "name": "Chemistry Research Lab",
+      "room_type": "Chemistry Lab",
+      "capacity": 36,
+      "building": "Science Complex"
+    },
+    "lab_phy": {
+      "id": "lab_phy",
+      "name": "Physics Lab",
+      "room_type": "Physics Lab",
+      "capacity": 36,
+      "building": "Science Complex"
+    },
+    "ground": {
+      "id": "ground",
+      "name": "Main Sports Ground",
+      "room_type": "Sports Ground / Gym",
+      "capacity": 80,
+      "building": "Outdoor Arena"
+    }
+  },
+  "lessons": {
+    "L_10A_MATH": {
+      "id": "L_10A_MATH",
+      "section_id": "s_10a",
+      "subject_id": "sub_math",
+      "teacher_id": "t_turing",
+      "room_id": "r_101",
+      "periods_per_week": 5,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10A_ENG": {
+      "id": "L_10A_ENG",
+      "section_id": "s_10a",
+      "subject_id": "sub_eng",
+      "teacher_id": "t_shakespeare",
+      "room_id": "r_101",
+      "periods_per_week": 4,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10A_PHY": {
+      "id": "L_10A_PHY",
+      "section_id": "s_10a",
+      "subject_id": "sub_phy",
+      "teacher_id": "t_einstein",
+      "room_id": "r_101",
+      "periods_per_week": 4,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10A_CHEM": {
+      "id": "L_10A_CHEM",
+      "section_id": "s_10a",
+      "subject_id": "sub_chem",
+      "teacher_id": "t_curie",
+      "room_id": "r_101",
+      "periods_per_week": 3,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10A_BIO": {
+      "id": "L_10A_BIO",
+      "section_id": "s_10a",
+      "subject_id": "sub_bio",
+      "teacher_id": "t_darwin",
+      "room_id": "r_101",
+      "periods_per_week": 3,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10A_HIST": {
+      "id": "L_10A_HIST",
+      "section_id": "s_10a",
+      "subject_id": "sub_hist",
+      "teacher_id": "t_orwell",
+      "room_id": "r_101",
+      "periods_per_week": 3,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10A_CS_TH": {
+      "id": "L_10A_CS_TH",
+      "section_id": "s_10a",
+      "subject_id": "sub_cs",
+      "teacher_id": "t_lovelace",
+      "room_id": "r_101",
+      "periods_per_week": 2,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10A_PE": {
+      "id": "L_10A_PE",
+      "section_id": "s_10a",
+      "subject_id": "sub_pe",
+      "teacher_id": "t_bolt",
+      "room_id": "ground",
+      "periods_per_week": 2,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10A_CS_LAB": {
+      "id": "L_10A_CS_LAB",
+      "section_id": "s_10a",
+      "subject_id": "sub_cs_lab",
+      "teacher_id": "t_lovelace",
+      "room_id": "lab_cs",
+      "periods_per_week": 2,
+      "block_size": 2,
+      "sync_group_id": "SYNC_G10_PRACTICAL_1",
+      "sync_group_name": "Grade 10 CS & Chem Lab Pair 1",
+      "priority": 3
+    },
+    "L_10A_CHEM_LAB": {
+      "id": "L_10A_CHEM_LAB",
+      "section_id": "s_10a",
+      "subject_id": "sub_chem_lab",
+      "teacher_id": "t_curie",
+      "room_id": "lab_chem",
+      "periods_per_week": 2,
+      "block_size": 2,
+      "sync_group_id": "SYNC_G10_PRACTICAL_2",
+      "sync_group_name": "Grade 10 Chem & CS Lab Pair 2",
+      "priority": 3
+    },
+    "L_10B_MATH": {
+      "id": "L_10B_MATH",
+      "section_id": "s_10b",
+      "subject_id": "sub_math",
+      "teacher_id": "t_turing",
+      "room_id": "r_102",
+      "periods_per_week": 5,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10B_ENG": {
+      "id": "L_10B_ENG",
+      "section_id": "s_10b",
+      "subject_id": "sub_eng",
+      "teacher_id": "t_orwell",
+      "room_id": "r_102",
+      "periods_per_week": 4,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10B_PHY": {
+      "id": "L_10B_PHY",
+      "section_id": "s_10b",
+      "subject_id": "sub_phy",
+      "teacher_id": "t_newton",
+      "room_id": "r_102",
+      "periods_per_week": 4,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10B_CHEM": {
+      "id": "L_10B_CHEM",
+      "section_id": "s_10b",
+      "subject_id": "sub_chem",
+      "teacher_id": "t_franklin",
+      "room_id": "r_102",
+      "periods_per_week": 3,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10B_BIO": {
+      "id": "L_10B_BIO",
+      "section_id": "s_10b",
+      "subject_id": "sub_bio",
+      "teacher_id": "t_darwin",
+      "room_id": "r_102",
+      "periods_per_week": 3,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10B_HIST": {
+      "id": "L_10B_HIST",
+      "section_id": "s_10b",
+      "subject_id": "sub_hist",
+      "teacher_id": "t_orwell",
+      "room_id": "r_102",
+      "periods_per_week": 3,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10B_CS_TH": {
+      "id": "L_10B_CS_TH",
+      "section_id": "s_10b",
+      "subject_id": "sub_cs",
+      "teacher_id": "t_lovelace",
+      "room_id": "r_102",
+      "periods_per_week": 2,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10B_PE": {
+      "id": "L_10B_PE",
+      "section_id": "s_10b",
+      "subject_id": "sub_pe",
+      "teacher_id": "t_bolt",
+      "room_id": "ground",
+      "periods_per_week": 2,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_10B_CHEM_LAB": {
+      "id": "L_10B_CHEM_LAB",
+      "section_id": "s_10b",
+      "subject_id": "sub_chem_lab",
+      "teacher_id": "t_curie",
+      "room_id": "lab_chem",
+      "periods_per_week": 2,
+      "block_size": 2,
+      "sync_group_id": "SYNC_G10_PRACTICAL_1",
+      "sync_group_name": "Grade 10 CS & Chem Lab Pair 1",
+      "priority": 3
+    },
+    "L_10B_CS_LAB": {
+      "id": "L_10B_CS_LAB",
+      "section_id": "s_10b",
+      "subject_id": "sub_cs_lab",
+      "teacher_id": "t_lovelace",
+      "room_id": "lab_cs",
+      "periods_per_week": 2,
+      "block_size": 2,
+      "sync_group_id": "SYNC_G10_PRACTICAL_2",
+      "sync_group_name": "Grade 10 Chem & CS Lab Pair 2",
+      "priority": 3
+    },
+    "L_11A_MATH": {
+      "id": "L_11A_MATH",
+      "section_id": "s_11a",
+      "subject_id": "sub_math",
+      "teacher_id": "t_turing",
+      "room_id": "r_201",
+      "periods_per_week": 5,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_11A_ENG": {
+      "id": "L_11A_ENG",
+      "section_id": "s_11a",
+      "subject_id": "sub_eng",
+      "teacher_id": "t_shakespeare",
+      "room_id": "r_201",
+      "periods_per_week": 4,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_11A_PHY": {
+      "id": "L_11A_PHY",
+      "section_id": "s_11a",
+      "subject_id": "sub_phy",
+      "teacher_id": "t_einstein",
+      "room_id": "r_201",
+      "periods_per_week": 4,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_11A_PHY_LAB": {
+      "id": "L_11A_PHY_LAB",
+      "section_id": "s_11a",
+      "subject_id": "sub_phy_lab",
+      "teacher_id": "t_newton",
+      "room_id": "lab_phy",
+      "periods_per_week": 2,
+      "block_size": 2,
+      "sync_group_id": "SYNC_G11_PRACTICAL_1",
+      "sync_group_name": "Grade 11 Phy & CS Lab Pair 1",
+      "priority": 3
+    },
+    "L_11A_CHEM": {
+      "id": "L_11A_CHEM",
+      "section_id": "s_11a",
+      "subject_id": "sub_chem",
+      "teacher_id": "t_franklin",
+      "room_id": "r_201",
+      "periods_per_week": 4,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_11A_CS": {
+      "id": "L_11A_CS",
+      "section_id": "s_11a",
+      "subject_id": "sub_cs",
+      "teacher_id": "t_lovelace",
+      "room_id": "r_201",
+      "periods_per_week": 3,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_11A_CS_LAB": {
+      "id": "L_11A_CS_LAB",
+      "section_id": "s_11a",
+      "subject_id": "sub_cs_lab",
+      "teacher_id": "t_lovelace",
+      "room_id": "lab_cs",
+      "periods_per_week": 2,
+      "block_size": 2,
+      "sync_group_id": "SYNC_G11_PRACTICAL_2",
+      "sync_group_name": "Grade 11 CS & Phy Lab Pair 2",
+      "priority": 3
+    },
+    "L_11A_PE": {
+      "id": "L_11A_PE",
+      "section_id": "s_11a",
+      "subject_id": "sub_pe",
+      "teacher_id": "t_bolt",
+      "room_id": "ground",
+      "periods_per_week": 2,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_11B_MATH": {
+      "id": "L_11B_MATH",
+      "section_id": "s_11b",
+      "subject_id": "sub_math",
+      "teacher_id": "t_turing",
+      "room_id": "r_202",
+      "periods_per_week": 5,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_11B_ENG": {
+      "id": "L_11B_ENG",
+      "section_id": "s_11b",
+      "subject_id": "sub_eng",
+      "teacher_id": "t_shakespeare",
+      "room_id": "r_202",
+      "periods_per_week": 4,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_11B_PHY": {
+      "id": "L_11B_PHY",
+      "section_id": "s_11b",
+      "subject_id": "sub_phy",
+      "teacher_id": "t_newton",
+      "room_id": "r_202",
+      "periods_per_week": 4,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_11B_CS_LAB": {
+      "id": "L_11B_CS_LAB",
+      "section_id": "s_11b",
+      "subject_id": "sub_cs_lab",
+      "teacher_id": "t_lovelace",
+      "room_id": "lab_cs",
+      "periods_per_week": 2,
+      "block_size": 2,
+      "sync_group_id": "SYNC_G11_PRACTICAL_1",
+      "sync_group_name": "Grade 11 Phy & CS Lab Pair 1",
+      "priority": 3
+    },
+    "L_11B_CHEM": {
+      "id": "L_11B_CHEM",
+      "section_id": "s_11b",
+      "subject_id": "sub_chem",
+      "teacher_id": "t_franklin",
+      "room_id": "r_202",
+      "periods_per_week": 4,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_11B_CS": {
+      "id": "L_11B_CS",
+      "section_id": "s_11b",
+      "subject_id": "sub_cs",
+      "teacher_id": "t_lovelace",
+      "room_id": "r_202",
+      "periods_per_week": 3,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    },
+    "L_11B_PHY_LAB": {
+      "id": "L_11B_PHY_LAB",
+      "section_id": "s_11b",
+      "subject_id": "sub_phy_lab",
+      "teacher_id": "t_newton",
+      "room_id": "lab_phy",
+      "periods_per_week": 2,
+      "block_size": 2,
+      "sync_group_id": "SYNC_G11_PRACTICAL_2",
+      "sync_group_name": "Grade 11 CS & Phy Lab Pair 2",
+      "priority": 3
+    },
+    "L_11B_PE": {
+      "id": "L_11B_PE",
+      "section_id": "s_11b",
+      "subject_id": "sub_pe",
+      "teacher_id": "t_bolt",
+      "room_id": "ground",
+      "periods_per_week": 2,
+      "block_size": 1,
+      "sync_group_id": "",
+      "sync_group_name": "",
+      "priority": 3
+    }
+  },
+  "duty_types": {
+    "dt_assembly": {
+      "id": "dt_assembly",
+      "name": "Morning Assembly & Gate Supervision",
+      "points_weight": 1.0
+    },
+    "dt_recess": {
+      "id": "dt_recess",
+      "name": "Recess Campus & Corridor Monitoring",
+      "points_weight": 1.0
+    },
+    "dt_invigilation": {
+      "id": "dt_invigilation",
+      "name": "Assessment & Exam Invigilation",
+      "points_weight": 2.0
+    }
+  },
+  "duty_slots": {
+    "ds_m_mon": {
+      "id": "ds_m_mon",
+      "duty_type_id": "dt_assembly",
+      "duty_name": "Morning Assembly",
+      "day": "Monday",
+      "period": 0,
+      "time_label": "08:00 - 08:30",
+      "location": "Main Ground",
+      "required_teachers": 2
+    },
+    "ds_m_tue": {
+      "id": "ds_m_tue",
+      "duty_type_id": "dt_assembly",
+      "duty_name": "Morning Assembly",
+      "day": "Tuesday",
+      "period": 0,
+      "time_label": "08:00 - 08:30",
+      "location": "Main Ground",
+      "required_teachers": 2
+    },
+    "ds_m_wed": {
+      "id": "ds_m_wed",
+      "duty_type_id": "dt_assembly",
+      "duty_name": "Morning Assembly",
+      "day": "Wednesday",
+      "period": 0,
+      "time_label": "08:00 - 08:30",
+      "location": "Main Ground",
+      "required_teachers": 2
+    },
+    "ds_m_thu": {
+      "id": "ds_m_thu",
+      "duty_type_id": "dt_assembly",
+      "duty_name": "Morning Assembly",
+      "day": "Thursday",
+      "period": 0,
+      "time_label": "08:00 - 08:30",
+      "location": "Main Ground",
+      "required_teachers": 2
+    },
+    "ds_m_fri": {
+      "id": "ds_m_fri",
+      "duty_type_id": "dt_assembly",
+      "duty_name": "Morning Assembly",
+      "day": "Friday",
+      "period": 0,
+      "time_label": "08:00 - 08:30",
+      "location": "Main Ground",
+      "required_teachers": 2
+    },
+    "ds_r_mon": {
+      "id": "ds_r_mon",
+      "duty_type_id": "dt_recess",
+      "duty_name": "Recess Corridor Duty",
+      "day": "Monday",
+      "period": 4,
+      "time_label": "11:30 - 12:00",
+      "location": "Wing A & B Corridors",
+      "required_teachers": 2
+    },
+    "ds_r_tue": {
+      "id": "ds_r_tue",
+      "duty_type_id": "dt_recess",
+      "duty_name": "Recess Corridor Duty",
+      "day": "Tuesday",
+      "period": 4,
+      "time_label": "11:30 - 12:00",
+      "location": "Wing A & B Corridors",
+      "required_teachers": 2
+    },
+    "ds_r_wed": {
+      "id": "ds_r_wed",
+      "duty_type_id": "dt_recess",
+      "duty_name": "Recess Corridor Duty",
+      "day": "Wednesday",
+      "period": 4,
+      "time_label": "11:30 - 12:00",
+      "location": "Wing A & B Corridors",
+      "required_teachers": 2
+    },
+    "ds_r_thu": {
+      "id": "ds_r_thu",
+      "duty_type_id": "dt_recess",
+      "duty_name": "Recess Corridor Duty",
+      "day": "Thursday",
+      "period": 4,
+      "time_label": "11:30 - 12:00",
+      "location": "Wing A & B Corridors",
+      "required_teachers": 2
+    },
+    "ds_r_fri": {
+      "id": "ds_r_fri",
+      "duty_type_id": "dt_recess",
+      "duty_name": "Recess Corridor Duty",
+      "day": "Friday",
+      "period": 4,
+      "time_label": "11:30 - 12:00",
+      "location": "Wing A & B Corridors",
+      "required_teachers": 2
+    },
+    "ds_inv_wed_p6": {
+      "id": "ds_inv_wed_p6",
+      "duty_type_id": "dt_invigilation",
+      "duty_name": "Mid-Term Hall Invigilation",
+      "day": "Wednesday",
+      "period": 6,
+      "time_label": "Period 6",
+      "location": "Exam Hall 1",
+      "required_teachers": 2
+    },
+    "ds_inv_thu_p6": {
+      "id": "ds_inv_thu_p6",
+      "duty_type_id": "dt_invigilation",
+      "duty_name": "Mid-Term Hall Invigilation",
+      "day": "Thursday",
+      "period": 6,
+      "time_label": "Period 6",
+      "location": "Exam Hall 1",
+      "required_teachers": 2
+    }
+  },
+  "duty_assignments": [],
+  "schedule": [],
+  "is_generated": false,
+  "last_generated_time": "",
+  "solve_stats": {}
+}
