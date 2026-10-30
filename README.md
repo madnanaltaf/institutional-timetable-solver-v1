@@ -187,13 +187,14 @@ python -m unittest discover tests
 
 ## 📄 Output Booklets Overview
 
-When running export, the system automatically compiles 5 complete documents:
-1. `Class_Sections_Timetable_Booklet.pdf`: Complete multi-page booklet for all 21 sections with designated Class Incharge names and room assignments.
-2. `Faculty_Teachers_Timetable_Booklet.pdf`: Individual schedule for all 43 teachers with subject specializations, class incharge responsibilities, and campus duty commitments.
-3. `Master_Institutional_Matrix.pdf`: Panoramic school matrix with day-specific period column widths (e.g. Friday sized cleanly to 4 periods).
-4. `Subject_Schedules_Report.pdf`: Chronological curriculum schedule showing where and when each subject is taught.
-5. `Staff_Duty_Roster.pdf`: Complete weekly duty roster with min-max fairness audit summary.
-6. `Master_Timetable.csv` & `Staff_Duty_Roster.csv`: Raw spreadsheet export ready for school ERP integration.
+When running export, the system automatically compiles complete publication-ready documents on **Landscape A4 with guaranteed, balanced margins** (~35–50 pt margins, zero edge clipping):
+1. `Class_Sections_Timetable_Booklet.pdf`: Complete multi-page booklet for all 21 sections with designated Class Incharge names, Period 1 locks, and home classroom indicators. Exactly 1 page per section.
+2. `Faculty_Teachers_Timetable_Booklet.pdf`: Individual schedules for all 43 teachers with subject specializations, class incharge responsibilities, and campus duty commitments.
+3. `Master_Sections_Matrix_By_Day.pdf` (and `Master_Institutional_Matrix.pdf`): Master schedule grouped day-by-day (Monday through Friday/Saturday). Each day is formatted on its own dedicated full-page Landscape A4 matrix showing all 21 sections across every period.
+4. `Master_Faculty_Matrix_By_Day.pdf`: Master daily teacher matrix showing where every single faculty member is stationed period-by-period, their assigned campus duties, and highlighting available staff for immediate substitution.
+5. `Subject_Schedules_Report.pdf`: Chronological curriculum schedule showing where and when each subject is taught.
+6. `Staff_Duty_Roster.pdf`: Complete weekly duty roster with min-max fairness audit summary.
+7. `Master_Timetable.csv` & `Staff_Duty_Roster.csv`: Raw spreadsheet export ready for school ERP integration.
 
 ---
 

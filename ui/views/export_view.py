@@ -88,12 +88,16 @@ class ExportView(tb.Frame):
 
         tb.Button(c2, text="📄 Export Teacher Timetable PDF", bootstyle="success", command=self._export_teacher_pdf).pack(anchor=E)
 
-        # Card 3: Master Institutional Panoramic Matrix PDF
-        c3 = tb.Labelframe(content, text=" 🌐 Master Institutional Matrix PDF ", bootstyle="info", padding=15)
+        # Card 3: Master Institutional Panoramic Matrix PDF (By Day)
+        c3 = tb.Labelframe(content, text=" 🌐 Master Institutional Matrices (By Day) ", bootstyle="info", padding=15)
         c3.grid(row=1, column=0, sticky="nsew", padx=(0, 10), pady=(0, 15))
 
-        tb.Label(c3, text="Comprehensive institutional landscape overview showing all sections and periods across every day.").pack(anchor=W, pady=(0, 12))
-        tb.Button(c3, text="📄 Export Master Matrix PDF", bootstyle="info", command=self._export_master_pdf).pack(anchor=E)
+        tb.Label(c3, text="Master schedules by day (Monday to Friday/Saturday). Each day on its own dedicated A4 page with guaranteed margins.").pack(anchor=W, pady=(0, 8))
+
+        btn_matrix_box = tb.Frame(c3)
+        btn_matrix_box.pack(anchor=E)
+        tb.Button(btn_matrix_box, text="📄 Class Matrix (By Day)", bootstyle="info", command=self._export_master_pdf).pack(side=LEFT, padx=(0, 6))
+        tb.Button(btn_matrix_box, text="📄 Faculty Matrix (By Day)", bootstyle="primary-outline", command=self._export_faculty_matrix_pdf).pack(side=LEFT)
 
         # Card 4: Duty Roster & Invigilation PDF
         c4 = tb.Labelframe(content, text=" 🛡️ Staff Duty Roster & Invigilation PDF ", bootstyle="warning", padding=15)
@@ -191,6 +195,22 @@ class ExportView(tb.Frame):
 
         gen = TimetablePDFGenerator(self.project)
         gen.export_master_timetable_pdf(dest)
+        self._notify_export_success(dest)
+
+    def _export_faculty_matrix_pdf(self):
+        if not self._check_schedule():
+            return
+        dest = filedialog.asksaveasfilename(
+            initialdir=self._get_export_dir(),
+            initialfile="Master_Faculty_Matrix_By_Day.pdf",
+            defaultextension=".pdf",
+            filetypes=[("PDF Documents", "*.pdf")]
+        )
+        if not dest:
+            return
+
+        gen = TimetablePDFGenerator(self.project)
+        gen.export_master_faculty_matrix_by_day_pdf(dest)
         self._notify_export_success(dest)
 
     def _export_duty_pdf(self):

@@ -238,5 +238,106 @@ class TestTimetableSolver(unittest.TestCase):
         restored_sec = Section.from_dict(sec_dict)
         self.assertEqual(restored_sec.class_teacher_id, "t_newton")
 
+    def test_master_matrices_by_day_and_margins(self):
+        """Tests that day-by-day master matrices generate with 1 page per day and guaranteed A4 margins."""
+        solver = TimetableSolver(self.project, timeout_seconds=15.0)
+        res = solver.solve()
+        self.assertTrue(res.success)
+        self.project.schedule = res.schedule
+
+        duty_solver = DutyRosterSolver(self.project)
+        duty_res = duty_solver.solve()
+        self.assertTrue(duty_res.success)
+
+        import pymupdf
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pdf_gen = TimetablePDFGenerator(self.project)
+
+            # 1. Section matrix by day
+            p_sec_matrix = os.path.join(tmpdir, "Sections_Matrix.pdf")
+            pdf_gen.export_master_sections_matrix_by_day_pdf(p_sec_matrix)
+            doc_sec = pymupdf.open(p_sec_matrix)
+            self.assertEqual(len(doc_sec), len(self.project.institution.working_days), "Expected 1 page per day in Master Section Matrix")
+            # Verify margins
+            p0 = doc_sec[0]
+            rects = [block[:4] for block in p0.get_text('blocks')]
+            min_x = min(r[0] for r in rects)
+            max_x = max(r[2] for r in rects)
+            self.assertGreater(min_x, 25.0, f"Left margin too small: {min_x}")
+            self.assertGreater(p0.rect.width - max_x, 25.0, f"Right margin too small: {p0.rect.width - max_x}")
+            doc_sec.close()
+
+            # 2. Faculty matrix by day
+            p_fac_matrix = os.path.join(tmpdir, "Faculty_Matrix.pdf")
+            pdf_gen.export_master_faculty_matrix_by_day_pdf(p_fac_matrix)
+            doc_fac = pymupdf.open(p_fac_matrix)
+            self.assertGreaterEqual(len(doc_fac), len(self.project.institution.working_days))
+            doc_fac.close()
+
+            # 3. Class booklet margins
+            p_booklet = os.path.join(tmpdir, "Class_Booklet.pdf")
+            pdf_gen.export_section_timetables_pdf(p_booklet)
+            doc_book = pymupdf.open(p_booklet)
+            self.assertEqual(len(doc_book), len(self.project.sections))
+            p_b0 = doc_book[0]
+            b_rects = [block[:4] for block in p_b0.get_text('blocks')]
+            b_min_x = min(r[0] for r in b_rects)
+            b_max_x = max(r[2] for r in b_rects)
+            self.assertGreater(b_min_x, 25.0, f"Class booklet left margin too small: {b_min_x}")
+            self.assertGreater(p_b0.rect.width - b_max_x, 25.0, f"Class booklet right margin too small: {p_b0.rect.width - b_max_x}")
+            doc_book.close()
+
+    def test_grade_9_10_11_12_parallel_pairing(self):
+        """Tests that 9C CS <-> 9B Bio, 10C CS <-> 10B Bio, 11C CS <-> 11B Chem, 12C CS <-> 12B Chem are paired."""
+        proj = TimetableProject.load_from_file("sample_data/college_sample.json")
+        solver = TimetableSolver(proj, timeout_seconds=15.0)
+        res = solver.solve()
+        self.assertTrue(res.success)
+
+        def get_slots(sec_id, sub_id):
+            return [(s.day, s.period) for s in res.schedule if s.section_id == sec_id and s.subject_id == sub_id and s.sync_group_id]
+
+        # 9C CS & 9B Bio
+        cs_9c = get_slots("s_9c", "sub_cs")
+        bio_9b = get_slots("s_9b", "sub_bio")
+        self.assertEqual(len(cs_9c), 2)
+        self.assertEqual(sorted(cs_9c), sorted(bio_9b))
+
+        # 10C CS & 10B Bio
+        cs_10c = get_slots("s_10c", "sub_cs")
+        bio_10b = get_slots("s_10b", "sub_bio")
+        self.assertEqual(len(cs_10c), 2)
+        self.assertEqual(sorted(cs_10c), sorted(bio_10b))
+
+        # 11C CS & 11B Chem
+        cs_11c = get_slots("s_11c", "sub_cs")
+        chem_11b = get_slots("s_11b", "sub_chem")
+        self.assertEqual(len(cs_11c), 2)
+        self.assertEqual(sorted(cs_11c), sorted(chem_11b))
+
+        # 12C CS & 12B Chem
+        cs_12c = get_slots("s_12c", "sub_cs")
+        chem_12b = get_slots("s_12b", "sub_chem")
+        self.assertEqual(len(cs_12c), 2)
+        self.assertEqual(sorted(cs_12c), sorted(chem_12b))
+
+    def test_manual_slot_locking_and_persistence(self):
+        """Tests that locked slots are never moved or overwritten by the solver."""
+        proj = TimetableProject.load_from_file("sample_data/college_sample.json")
+        slot_to_lock = [s for s in proj.schedule if s.section_id == "s_10a"][0]
+        orig_day, orig_period = slot_to_lock.day, slot_to_lock.period
+        slot_to_lock.is_locked = True
+
+        solver = TimetableSolver(proj, timeout_seconds=15.0)
+        res = solver.solve()
+        self.assertTrue(res.success)
+
+        # Confirm locked slot was preserved
+        locked_found = [s for s in res.schedule if s.id == slot_to_lock.id]
+        self.assertEqual(len(locked_found), 1)
+        self.assertEqual(locked_found[0].day, orig_day)
+        self.assertEqual(locked_found[0].period, orig_period)
+        self.assertTrue(locked_found[0].is_locked)
+
 if __name__ == "__main__":
     unittest.main()

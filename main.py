@@ -102,6 +102,14 @@ def run_cli(args):
     pdf_gen.export_master_timetable_pdf(p_master)
     print(f"  ✓ {p_master}")
 
+    p_sec_matrix = os.path.join(export_dir, "Master_Sections_Matrix_By_Day.pdf")
+    pdf_gen.export_master_sections_matrix_by_day_pdf(p_sec_matrix)
+    print(f"  ✓ {p_sec_matrix}")
+
+    p_fac_matrix = os.path.join(export_dir, "Master_Faculty_Matrix_By_Day.pdf")
+    pdf_gen.export_master_faculty_matrix_by_day_pdf(p_fac_matrix)
+    print(f"  ✓ {p_fac_matrix}")
+
     p_sub = os.path.join(export_dir, "Subject_Schedules_Report.pdf")
     pdf_gen.export_subject_schedules_pdf(p_sub)
     print(f"  ✓ {p_sub}")

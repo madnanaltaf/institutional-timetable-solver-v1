@@ -16,7 +16,7 @@ from solver.duty_solver import DutyRosterSolver
 from ui.dialogs.edit_slot_dialog import EditSlotDialog
 from exports.pdf_generator import TimetablePDFGenerator
 
-VIEW_MODES = ["Section / Class View", "Faculty Teacher View", "Room / Laboratory View", "Master Institutional Matrix"]
+VIEW_MODES = ["Section / Class View", "Faculty Teacher View", "Room / Laboratory View", "Master Class Matrix (By Day)", "Master Faculty Matrix (By Day)"]
 
 class TimetableView(tb.Frame):
     def __init__(self, parent, project: TimetableProject, on_update_callback=None):
@@ -69,6 +69,22 @@ class TimetableView(tb.Frame):
 
         self.btn_refresh = tb.Button(controls, text="🔄 Refresh", bootstyle="secondary-outline", command=self.refresh)
         self.btn_refresh.pack(side=LEFT)
+
+        self.btn_lock_all = tb.Button(
+            controls,
+            text="🔒 Lock All",
+            bootstyle="warning-outline",
+            command=lambda: self._lock_all_slots(True)
+        )
+        self.btn_lock_all.pack(side=LEFT, padx=(6, 2))
+
+        self.btn_unlock_all = tb.Button(
+            controls,
+            text="🔓 Unlock All",
+            bootstyle="secondary-outline",
+            command=lambda: self._lock_all_slots(False)
+        )
+        self.btn_unlock_all.pack(side=LEFT, padx=(0, 6))
 
         # Scrollable Grid Container
         self.grid_canvas_frame = tb.Frame(self)
@@ -182,6 +198,8 @@ class TimetableView(tb.Frame):
             self._render_teacher_view()
         elif mode == "Room / Laboratory View":
             self._render_room_view()
+        elif mode == "Master Faculty Matrix (By Day)":
+            self._render_master_faculty_matrix_view()
         else:
             self._render_master_matrix_view()
 
@@ -192,21 +210,29 @@ class TimetableView(tb.Frame):
             return
 
         sec = self.project.sections.get(sec_id)
+        
+        top_bar = tb.Frame(self.grid_container)
+        top_bar.grid(row=0, column=0, columnspan=12, sticky="ew", pady=(0, 6))
+
+        incharge_text = ""
         if sec and sec.class_teacher_id:
             t_incharge = self.project.teachers.get(sec.class_teacher_id)
             if t_incharge:
-                tb.Label(
-                    self.grid_container,
-                    text=f"👨‍🏫 Class Incharge / Class Teacher: {t_incharge.name} ({t_incharge.code})  |  Strength: {sec.student_count} Students",
-                    font=("Helvetica", 10, "bold"),
-                    bootstyle="primary"
-                ).grid(row=0, column=0, columnspan=len(self.project.institution.working_days) + 1, sticky="w", pady=(0, 6))
+                incharge_text = f"👨‍🏫 Class Incharge: {t_incharge.name} ({t_incharge.code})  |  Strength: {sec.student_count} Students"
+
+        if incharge_text:
+            tb.Label(top_bar, text=incharge_text, font=("Helvetica", 10, "bold"), bootstyle="primary").pack(side=LEFT)
+
+        sec_btn_box = tb.Frame(top_bar)
+        sec_btn_box.pack(side=RIGHT)
+        tb.Button(sec_btn_box, text="🔒 Lock All in Section", bootstyle="warning-outline", padding=(6, 2), command=lambda: self._toggle_section_lock(sec_id, True)).pack(side=LEFT, padx=(0, 5))
+        tb.Button(sec_btn_box, text="🔓 Unlock Section", bootstyle="secondary-outline", padding=(6, 2), command=lambda: self._toggle_section_lock(sec_id, False)).pack(side=LEFT)
 
         days = list(self.project.institution.working_days)
         periods_count = self.project.institution.get_max_periods_any_day()
         break_after = self.project.institution.break_after_period
 
-        start_row = 1 if (sec and sec.class_teacher_id) else 0
+        start_row = 1
 
         # Header Row: Days by row, Periods by column!
         col_idx = 0
@@ -402,6 +428,47 @@ class TimetableView(tb.Frame):
         for c in range(periods_count + 1):
             self.grid_container.columnconfigure(c, weight=1)
 
+    # ------------------ 5. Master Faculty Matrix View ------------------ #
+    def _render_master_faculty_matrix_view(self):
+        target_day = self.combo_filter.get()
+        if not target_day:
+            return
+
+        periods_count = self.project.institution.get_periods_for_day(target_day)
+        teachers = list(self.project.teachers.values())
+
+        day_note = f" (Early Dismissal after Period {periods_count})" if periods_count < self.project.institution.periods_per_day else ""
+        tb.Label(self.grid_container, text=f"Faculty Member{day_note}", font=("Helvetica", 9, "bold"), bootstyle="inverse-success", padding=6).grid(row=0, column=0, sticky="nsew", padx=1, pady=1)
+        for p in range(1, periods_count + 1):
+            p_lbl = f"Period {p}"
+            tb.Label(self.grid_container, text=p_lbl, font=("Helvetica", 9, "bold"), bootstyle="inverse-success", padding=6).grid(row=0, column=p, sticky="nsew", padx=1, pady=1)
+
+        for r_idx, teacher in enumerate(teachers, start=1):
+            sub_spec = self.project.subjects.get(teacher.primary_subject_id)
+            spec_code = f" [{sub_spec.code}]" if sub_spec else ""
+            tb.Label(self.grid_container, text=f"{teacher.name}{spec_code}", font=("Helvetica", 8, "bold"), bootstyle="secondary", padding=6).grid(row=r_idx, column=0, sticky="nsew", padx=1, pady=1)
+
+            for p in range(1, periods_count + 1):
+                if not teacher.is_available(target_day, p):
+                    lbl = tb.Label(self.grid_container, text="[Blocked]", font=("Helvetica", 8), bootstyle="danger-outline", padding=6)
+                    lbl.grid(row=r_idx, column=p, sticky="nsew", padx=1, pady=1)
+                    continue
+
+                slot = self.project.get_teacher_slot_at(target_day, p, teacher.id)
+                if slot:
+                    self._create_cell_card(self.grid_container, slot, r_idx, p, context="master_faculty")
+                else:
+                    duty = self.project.get_teacher_duty_at(target_day, p, teacher.id)
+                    if duty:
+                        lbl = tb.Label(self.grid_container, text=f"🛡️ {duty.duty_name}", font=("Helvetica", 8, "bold"), bootstyle="warning", padding=6)
+                        lbl.grid(row=r_idx, column=p, sticky="nsew", padx=1, pady=1)
+                    else:
+                        lbl = tb.Label(self.grid_container, text="Available", font=("Helvetica", 8), bootstyle="success-outline", padding=6)
+                        lbl.grid(row=r_idx, column=p, sticky="nsew", padx=1, pady=1)
+
+        for c in range(periods_count + 1):
+            self.grid_container.columnconfigure(c, weight=1)
+
     # ------------------ Card Cell Helper ------------------ #
     def _create_cell_card(self, parent, slot: ScheduledSlot, row: int, col: int, context: str):
         if not slot:
@@ -419,23 +486,29 @@ class TimetableView(tb.Frame):
         t_code = teacher.code if teacher else ""
         sec_name = sec.display_name if sec else slot.section_id
         r_name = room.name if room else ""
+        is_locked = getattr(slot, 'is_locked', False)
+        lock_badge = "🔒 " if is_locked else ""
         sync_badge = "🔬 Synced " if slot.sync_group_id else ""
         dur_badge = f"[{slot.duration}P] " if slot.duration > 1 else ""
 
         if context == "section":
-            primary_txt = f"{dur_badge}{sub_name}"
+            primary_txt = f"{lock_badge}{dur_badge}{sub_name}"
             secondary_txt = f"{t_name} • {r_name}"
         elif context == "teacher":
-            primary_txt = f"{dur_badge}{sec_name}"
+            primary_txt = f"{lock_badge}{dur_badge}{sec_name}"
             secondary_txt = f"{sub_name} • {r_name}"
         elif context == "room":
-            primary_txt = f"{dur_badge}{sec_name}"
+            primary_txt = f"{lock_badge}{dur_badge}{sec_name}"
             secondary_txt = f"{sub_name} • {t_code}"
+        elif context == "master_faculty":
+            primary_txt = f"{lock_badge}{sec_name}"
+            secondary_txt = f"{sub.code if sub else sub_name} • {r_name}"
         else:  # Master matrix
-            primary_txt = f"{sub.code if sub else sub_name}"
+            primary_txt = f"{lock_badge}{sub.code if sub else sub_name}"
             secondary_txt = f"{t_code} • {r_name}"
 
-        card = tb.Frame(parent, bootstyle="secondary", padding=4)
+        card_style = "warning" if is_locked else ("info" if slot.sync_group_id else "secondary")
+        card = tb.Frame(parent, bootstyle=card_style, padding=4)
         card.grid(row=row, column=col, sticky="nsew", padx=1, pady=1)
 
         lbl_p = tb.Label(
@@ -462,6 +535,25 @@ class TimetableView(tb.Frame):
     def _on_card_click(self, slot: ScheduledSlot):
         dlg = EditSlotDialog(self, self.project, slot, on_changed=self._render_grid)
         dlg.grab_set()
+
+    # ------------------ Lock / Pin Management ------------------ #
+    def _toggle_section_lock(self, section_id: str, lock_state: bool):
+        sec_slots = self.project.get_section_slots(section_id)
+        for s in sec_slots:
+            s.is_locked = lock_state
+        self._render_grid()
+        status_word = "locked in place (pinned)" if lock_state else "unlocked"
+        messagebox.showinfo("Section Locks Updated", f"All {len(sec_slots)} lectures for this section are now {status_word}!")
+
+    def _lock_all_slots(self, lock_state: bool):
+        if not self.project.schedule:
+            messagebox.showwarning("Notice", "No timetable schedule generated yet to lock.")
+            return
+        for s in self.project.schedule:
+            s.is_locked = lock_state
+        self._render_grid()
+        status_word = "locked in place (pinned)" if lock_state else "unlocked"
+        messagebox.showinfo("Timetable Locks Updated", f"All {len(self.project.schedule)} lectures across the entire institution are now {status_word}!")
 
     # ------------------ Direct Solving Action ------------------ #
     def _on_generate_timetable(self):

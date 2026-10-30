@@ -87,6 +87,18 @@ class EditSlotDialog(tb.Toplevel):
         self.combo_teacher.grid(row=2, column=1, sticky="ew", pady=4)
         self.combo_teacher.bind("<<ComboboxSelected>>", self._validate_slot)
 
+        # Lock / Pin in place toggle
+        lock_box = tb.Frame(content)
+        lock_box.pack(fill=X, pady=(0, 10))
+        self.var_locked = tb.BooleanVar(value=getattr(self.slot, 'is_locked', False))
+        self.chk_locked = tb.Checkbutton(
+            lock_box,
+            text="🔒 Lock this lecture in place (Pinned — Re-generating solver will never move it)",
+            variable=self.var_locked,
+            bootstyle="warning-round-toggle"
+        )
+        self.chk_locked.pack(anchor=W)
+
         # Real-time conflict feedback card
         self.conflict_card = tb.Labelframe(content, text=" Conflict Validation ", bootstyle="secondary", padding=10)
         self.conflict_card.pack(fill=BOTH, expand=True, pady=(10, 15))
@@ -210,6 +222,7 @@ class EditSlotDialog(tb.Toplevel):
         self.slot.day = target_day
         self.slot.period = target_period
         self.slot.teacher_id = target_teacher_id
+        self.slot.is_locked = bool(self.var_locked.get())
 
         if self.on_changed:
             self.on_changed()

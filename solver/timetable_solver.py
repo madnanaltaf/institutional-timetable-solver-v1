@@ -94,6 +94,9 @@ class TimetableSolver:
         # Subject per section per day tracking for fatigue avoidance
         self.section_day_subjects: Dict[Tuple[str, str], List[str]] = {}
 
+        # Preserve any user-locked slots
+        self.locked_slots: List[ScheduledSlot] = [s for s in self.project.schedule if getattr(s, 'is_locked', False)]
+
         # Assignments: macro_id -> (day, start_period, task_rooms: Dict[task_id, room_id])
         self.assignments: Dict[str, Tuple[str, int, Dict[str, str]]] = {}
 
@@ -197,8 +200,17 @@ class TimetableSolver:
         sync_groups: Dict[str, List[TaskItem]] = {}
         standalone_tasks: List[TaskItem] = []
 
+        # Deduct periods already fulfilled by user-locked slots
+        locked_periods_by_lesson: Dict[str, int] = {}
+        for s in self.locked_slots:
+            locked_periods_by_lesson[s.lesson_id] = locked_periods_by_lesson.get(s.lesson_id, 0) + s.duration
+
         for lesson_id, lesson in self.project.lessons.items():
-            total_periods = lesson.periods_per_week
+            already_locked = locked_periods_by_lesson.get(lesson_id, 0)
+            total_periods = max(0, lesson.periods_per_week - already_locked)
+            if total_periods <= 0:
+                continue
+
             block_size = max(1, lesson.block_size)
             num_blocks = total_periods // block_size
             remainder = total_periods % block_size
@@ -283,6 +295,15 @@ class TimetableSolver:
         self.room_occupancy.clear()
         self.section_day_subjects.clear()
         self.assignments.clear()
+
+        # Pre-populate occupancy from user-locked slots
+        for s in self.locked_slots:
+            for d_p in range(s.period, s.period + s.duration):
+                self.section_occupancy.add((s.day, d_p, s.section_id))
+                self.teacher_occupancy.add((s.day, d_p, s.teacher_id))
+                if s.room_id:
+                    self.room_occupancy.add((s.day, d_p, s.room_id))
+            self.section_day_subjects.setdefault((s.day, s.section_id), []).append(s.subject_id)
 
     def _backtrack(self, index: int) -> bool:
         """Recursive backtracking with MRV and constraint propagation."""
@@ -544,8 +565,8 @@ class TimetableSolver:
                 subs.remove(task.subject_id)
 
     def _build_scheduled_slots(self) -> List[ScheduledSlot]:
-        """Converts internal assignments into list of ScheduledSlot objects."""
-        slots = []
+        """Converts internal assignments into list of ScheduledSlot objects, including preserved locked slots."""
+        slots = list(self.locked_slots)
         for macro in self.macro_tasks:
             if macro.macro_id not in self.assignments:
                 continue

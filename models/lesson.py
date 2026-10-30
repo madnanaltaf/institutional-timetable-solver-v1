@@ -45,10 +45,23 @@ class ScheduledSlot:
     period: int
     duration: int = 1  # 1 for single period, 2 for double block
     sync_group_id: str = ""
+    is_locked: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ScheduledSlot":
-        return cls(**data)
+        return cls(
+            id=data["id"],
+            lesson_id=data["lesson_id"],
+            section_id=data["section_id"],
+            subject_id=data["subject_id"],
+            teacher_id=data["teacher_id"],
+            room_id=data.get("room_id", ""),
+            day=data["day"],
+            period=data["period"],
+            duration=data.get("duration", 1),
+            sync_group_id=data.get("sync_group_id", ""),
+            is_locked=data.get("is_locked", False)
+        )
