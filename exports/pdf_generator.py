@@ -161,46 +161,56 @@ class TimetablePDFGenerator:
                 elements.append(Paragraph(home_str, self.styles['GridCellDetail']))
                 elements.append(Spacer(1, 4))
 
-            # Timetable Grid
+            # Timetable Grid (Days by row, Periods by column)
             table = self._build_section_grid_table(sec.id)
             elements.append(table)
-            elements.append(Spacer(1, 10))
-
-            # Subject Legend / Teacher mapping
-            legend = self._build_section_legend_table(sec.id)
-            if legend:
-                elements.append(Paragraph("Subject & Faculty Directory:", self.styles['SectionTitle']))
-                elements.append(legend)
+            # "below data not needed": only show class export with only timetable
 
         doc.build(elements)
+
+    def _get_period_time(self, p: int) -> str:
+        for pt in self.project.institution.period_times:
+            if pt.period_num == p:
+                return f"{pt.start_time} - {pt.end_time}"
+        return ""
 
     def _build_section_grid_table(self, section_id: str) -> Table:
         days = list(self.project.institution.working_days)
         periods_count = self.project.institution.get_max_periods_any_day()
         break_after = self.project.institution.break_after_period
+        sec = self.project.sections.get(section_id)
 
-        # Columns: Period Label | Day 1 | Day 2 | ...
-        header_row = ["Period / Time"]
-        for day in days:
-            day_p = self.project.institution.get_periods_for_day(day)
-            lbl = f"{day}\n({day_p} Periods)" if day == "Friday" or day_p != self.project.institution.periods_per_day else day
-            header_row.append(lbl)
+        # Columns: Day / Timing | Period 1 .. 4 | RECESS | Period 5 .. 7
+        header_row = [Paragraph("<b>Day / Timing</b>", self.styles['GridCellSubject'])]
+        for p in range(1, break_after + 1):
+            t_str = self._get_period_time(p)
+            lbl = f"<b>Period {p}</b><br/><font size=6 color='#64748B'>{t_str}</font>"
+            header_row.append(Paragraph(lbl, self.styles['GridCellSubject']))
+
+        # Recess Column
+        header_row.append(Paragraph("<b>RECESS</b><br/><font size=6 color='#92400E'>11:00-11:30</font>", self.styles['BreakCell']))
+
+        for p in range(break_after + 1, periods_count + 1):
+            t_str = self._get_period_time(p)
+            lbl = f"<b>Period {p}</b><br/><font size=6 color='#64748B'>{t_str}</font>"
+            header_row.append(Paragraph(lbl, self.styles['GridCellSubject']))
+
         table_data = [header_row]
-
-        # Fetch section slots
         slots = self.project.get_section_slots(section_id)
 
-        for p in range(1, periods_count + 1):
-            time_label = self.project.institution.get_period_label(p)
-            row = [time_label]
+        fri_row_idx = None
+        for r_idx, day in enumerate(days, start=1):
+            day_max_p = self.project.institution.get_periods_for_day(day)
+            if day == "Friday":
+                fri_row_idx = r_idx
+                day_lbl = Paragraph("<b>Friday</b><br/><font size=6 color='#0284C7'>[4 Periods]</font>", self.styles['GridCellSubject'])
+            else:
+                day_lbl = Paragraph(f"<b>{day}</b>", self.styles['GridCellSubject'])
 
-            for day in days:
-                day_max_p = self.project.institution.get_periods_for_day(day)
-                if p > day_max_p:
-                    row.append(Paragraph("<font color='#64748B'><i>— Early Dismissal —<br/><font size=6 color='#94A3B8'>[Jummah/Weekend]</font></i></font>", self.styles['GridCellDetail']))
-                    continue
+            row = [day_lbl]
 
-                # Find slot for this section at (day, p)
+            # Periods 1 to break_after
+            for p in range(1, break_after + 1):
                 matching = None
                 for s in slots:
                     if s.day == day and s.period <= p < s.period + s.duration:
@@ -211,51 +221,82 @@ class TimetablePDFGenerator:
                     sub = self.project.subjects.get(matching.subject_id)
                     teacher = self.project.teachers.get(matching.teacher_id)
                     room = self.project.classrooms.get(matching.room_id)
-
                     sub_name = sub.name if sub else matching.subject_id
-                    t_name = teacher.name if teacher else matching.teacher_id
-                    r_name = f"[{room.name}]" if room else ""
-                    sync_tag = " • Synced Lab" if matching.sync_group_id else ""
+                    t_str = f"{teacher.name} ({teacher.code})" if teacher else matching.teacher_id
+                    r_str = f"[{room.name}]" if room else ""
+                    is_incharge = (sec and sec.class_teacher_id == matching.teacher_id)
+                    badge = " ⭐" if is_incharge else ""
+                    sync_tag = " • Paired" if matching.sync_group_id else ""
 
                     cell_p = Paragraph(
-                        f"<b>{sub_name}</b>{sync_tag}<br/>"
-                        f"<font size=6 color='#475569'>{t_name} {r_name}</font>",
+                        f"<font color='#0F172A'><b>{sub_name}</b>{sync_tag}</font><br/>"
+                        f"<font size=7 color='#1E3A8A'>{t_str}{badge}</font><br/>"
+                        f"<font size=6.5 color='#64748B'>{r_str}</font>",
                         self.styles['GridCellSubject']
                     )
                     row.append(cell_p)
                 else:
-                    row.append(Paragraph("<font color='#94A3B8'>— Free / Study —</font>", self.styles['GridCellDetail']))
+                    row.append(Paragraph("<font color='#94A3B8'>— Free —</font>", self.styles['GridCellDetail']))
+
+            # Recess Column
+            row.append(Paragraph("<b>RECESS<br/>BREAK</b>", self.styles['BreakCell']))
+
+            # Periods after break (5 to periods_count)
+            for p in range(break_after + 1, periods_count + 1):
+                if p > day_max_p:
+                    row.append(Paragraph("<font color='#64748B'><i>— Early Dismissal —<br/><font size=6 color='#94A3B8'>[Jummah Prayer & Weekend]</font></i></font>", self.styles['GridCellDetail']))
+                    continue
+
+                matching = None
+                for s in slots:
+                    if s.day == day and s.period <= p < s.period + s.duration:
+                        matching = s
+                        break
+
+                if matching:
+                    sub = self.project.subjects.get(matching.subject_id)
+                    teacher = self.project.teachers.get(matching.teacher_id)
+                    room = self.project.classrooms.get(matching.room_id)
+                    sub_name = sub.name if sub else matching.subject_id
+                    t_str = f"{teacher.name} ({teacher.code})" if teacher else matching.teacher_id
+                    r_str = f"[{room.name}]" if room else ""
+                    is_incharge = (sec and sec.class_teacher_id == matching.teacher_id)
+                    badge = " ⭐" if is_incharge else ""
+                    sync_tag = " • Paired" if matching.sync_group_id else ""
+
+                    cell_p = Paragraph(
+                        f"<font color='#0F172A'><b>{sub_name}</b>{sync_tag}</font><br/>"
+                        f"<font size=7 color='#1E3A8A'>{t_str}{badge}</font><br/>"
+                        f"<font size=6.5 color='#64748B'>{r_str}</font>",
+                        self.styles['GridCellSubject']
+                    )
+                    row.append(cell_p)
+                else:
+                    row.append(Paragraph("<font color='#94A3B8'>— Free —</font>", self.styles['GridCellDetail']))
 
             table_data.append(row)
 
-            # Insert Break Row if this is the break period
-            if p == break_after and p < periods_count:
-                break_row = ["RECESS / LUNCH"] + [Paragraph("<b>RECESS / CAMPUS BREAK</b>", self.styles['BreakCell']) for _ in days]
-                table_data.append(break_row)
+        col_widths = [72, 95, 95, 95, 95, 48, 95, 95, 95]
+        row_heights = [32] + [64] * len(days)
 
-        # Table Styling
-        col_widths = [85] + [(792 - 48 - 85) / len(days)] * len(days)
         t_style = [
             ('BACKGROUND', (0, 0), (-1, 0), PRIMARY_COLOR),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-            ('BOX', (0, 0), (-1, -1), 1, PRIMARY_COLOR),
-            ('BACKGROUND', (0, 0), (0, -1), HEADER_BG),
+            ('BOX', (0, 0), (-1, -1), 1.5, PRIMARY_COLOR),
+            ('BACKGROUND', (0, 1), (0, -1), HEADER_BG),
+            ('BACKGROUND', (5, 0), (5, -1), BREAK_BG),
+            ('TEXTCOLOR', (5, 0), (5, -1), BREAK_TEXT),
         ]
 
-        # Highlight break row
-        row_idx = 1
-        for p in range(1, periods_count + 1):
-            row_idx += 1
-            if p == break_after and p < periods_count:
-                t_style.append(('BACKGROUND', (0, row_idx - 1), (-1, row_idx - 1), BREAK_BG))
-                row_idx += 1
+        # Span Friday dismissal across periods 5, 6, 7
+        if fri_row_idx is not None:
+            t_style.append(('SPAN', (6, fri_row_idx), (8, fri_row_idx)))
+            t_style.append(('BACKGROUND', (6, fri_row_idx), (8, fri_row_idx), colors.HexColor("#F8FAFC")))
 
-        table = Table(table_data, colWidths=col_widths, repeatRows=1)
+        table = Table(table_data, colWidths=col_widths, rowHeights=row_heights, repeatRows=1)
         table.setStyle(TableStyle(t_style))
         return table
 
@@ -347,29 +388,41 @@ class TimetablePDFGenerator:
         days = list(self.project.institution.working_days)
         periods_count = self.project.institution.get_max_periods_any_day()
         break_after = self.project.institution.break_after_period
-
-        header_row = ["Period / Time"]
-        for day in days:
-            day_p = self.project.institution.get_periods_for_day(day)
-            lbl = f"{day}\n({day_p} Periods)" if day == "Friday" or day_p != self.project.institution.periods_per_day else day
-            header_row.append(lbl)
-        table_data = [header_row]
-        slots = self.project.get_teacher_slots(teacher_id)
         teacher = self.project.teachers.get(teacher_id)
+        slots = self.project.get_teacher_slots(teacher_id)
 
-        for p in range(1, periods_count + 1):
-            time_label = self.project.institution.get_period_label(p)
-            row = [time_label]
+        # Columns: Day / Timing | Period 1 .. 4 | RECESS | Period 5 .. 7
+        header_row = [Paragraph("<b>Day / Timing</b>", self.styles['GridCellSubject'])]
+        for p in range(1, break_after + 1):
+            t_str = self._get_period_time(p)
+            lbl = f"<b>Period {p}</b><br/><font size=6 color='#64748B'>{t_str}</font>"
+            header_row.append(Paragraph(lbl, self.styles['GridCellSubject']))
 
-            for day in days:
-                day_max_p = self.project.institution.get_periods_for_day(day)
-                if p > day_max_p:
-                    row.append(Paragraph("<font color='#64748B'><i>— Early Dismissal —</i></font>", self.styles['GridCellDetail']))
-                    continue
+        # Recess Column
+        header_row.append(Paragraph("<b>RECESS</b><br/><font size=6 color='#92400E'>11:00-11:30</font>", self.styles['BreakCell']))
 
-                # Check teacher unavailability
+        for p in range(break_after + 1, periods_count + 1):
+            t_str = self._get_period_time(p)
+            lbl = f"<b>Period {p}</b><br/><font size=6 color='#64748B'>{t_str}</font>"
+            header_row.append(Paragraph(lbl, self.styles['GridCellSubject']))
+
+        table_data = [header_row]
+        fri_row_idx = None
+
+        for r_idx, day in enumerate(days, start=1):
+            day_max_p = self.project.institution.get_periods_for_day(day)
+            if day == "Friday":
+                fri_row_idx = r_idx
+                day_lbl = Paragraph("<b>Friday</b><br/><font size=6 color='#0284C7'>[4 Periods]</font>", self.styles['GridCellSubject'])
+            else:
+                day_lbl = Paragraph(f"<b>{day}</b>", self.styles['GridCellSubject'])
+
+            row = [day_lbl]
+
+            # Periods 1 to break_after
+            for p in range(1, break_after + 1):
                 if teacher and not teacher.is_available(day, p):
-                    row.append(Paragraph("<font color='#EF4444'><b>[Unavailable]</b></font>", self.styles['GridCellDetail']))
+                    row.append(Paragraph("<font color='#EF4444'><b>[Blocked]</b></font>", self.styles['GridCellDetail']))
                     continue
 
                 matching = None
@@ -382,49 +435,82 @@ class TimetablePDFGenerator:
                     sub = self.project.subjects.get(matching.subject_id)
                     sec = self.project.sections.get(matching.section_id)
                     room = self.project.classrooms.get(matching.room_id)
-
-                    sub_name = sub.name if sub else matching.subject_id
                     sec_name = sec.display_name if sec else matching.section_id
+                    sub_name = sub.name if sub else matching.subject_id
                     r_name = f"[{room.name}]" if room else ""
+                    sync_tag = " • Paired" if matching.sync_group_id else ""
 
                     cell_p = Paragraph(
-                        f"<b>{sec_name}</b><br/>"
-                        f"<font size=6.5 color='#1E40AF'>{sub_name}</font><br/>"
-                        f"<font size=6 color='#64748B'>{r_name}</font>",
+                        f"<font color='#0F172A'><b>{sec_name}</b>{sync_tag}</font><br/>"
+                        f"<font size=7 color='#1E3A8A'>{sub_name}</font><br/>"
+                        f"<font size=6.5 color='#64748B'>{r_name}</font>",
                         self.styles['GridCellSubject']
                     )
                     row.append(cell_p)
                 else:
-                    row.append(Paragraph("<font color='#94A3B8'>Free Period</font>", self.styles['GridCellDetail']))
+                    row.append(Paragraph("<font color='#94A3B8'>Free</font>", self.styles['GridCellDetail']))
+
+            # Recess Column
+            row.append(Paragraph("<b>RECESS<br/>BREAK</b>", self.styles['BreakCell']))
+
+            # Periods after break (5 to periods_count)
+            for p in range(break_after + 1, periods_count + 1):
+                if p > day_max_p:
+                    row.append(Paragraph("<font color='#64748B'><i>— Early Dismissal —<br/><font size=6 color='#94A3B8'>[Jummah Prayer & Weekend]</font></i></font>", self.styles['GridCellDetail']))
+                    continue
+
+                if teacher and not teacher.is_available(day, p):
+                    row.append(Paragraph("<font color='#EF4444'><b>[Blocked]</b></font>", self.styles['GridCellDetail']))
+                    continue
+
+                matching = None
+                for s in slots:
+                    if s.day == day and s.period <= p < s.period + s.duration:
+                        matching = s
+                        break
+
+                if matching:
+                    sub = self.project.subjects.get(matching.subject_id)
+                    sec = self.project.sections.get(matching.section_id)
+                    room = self.project.classrooms.get(matching.room_id)
+                    sec_name = sec.display_name if sec else matching.section_id
+                    sub_name = sub.name if sub else matching.subject_id
+                    r_name = f"[{room.name}]" if room else ""
+                    sync_tag = " • Paired" if matching.sync_group_id else ""
+
+                    cell_p = Paragraph(
+                        f"<font color='#0F172A'><b>{sec_name}</b>{sync_tag}</font><br/>"
+                        f"<font size=7 color='#1E3A8A'>{sub_name}</font><br/>"
+                        f"<font size=6.5 color='#64748B'>{r_name}</font>",
+                        self.styles['GridCellSubject']
+                    )
+                    row.append(cell_p)
+                else:
+                    row.append(Paragraph("<font color='#94A3B8'>Free</font>", self.styles['GridCellDetail']))
 
             table_data.append(row)
 
-            # Insert Break Row
-            if p == break_after and p < periods_count:
-                break_row = ["RECESS"] + [Paragraph("<b>RECESS / CAMPUS BREAK</b>", self.styles['BreakCell']) for _ in days]
-                table_data.append(break_row)
+        col_widths = [72, 95, 95, 95, 95, 48, 95, 95, 95]
+        row_heights = [32] + [58] * len(days)
 
-        col_widths = [85] + [(792 - 48 - 85) / len(days)] * len(days)
         t_style = [
             ('BACKGROUND', (0, 0), (-1, 0), PRIMARY_COLOR),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-            ('BOX', (0, 0), (-1, -1), 1, PRIMARY_COLOR),
-            ('BACKGROUND', (0, 0), (0, -1), HEADER_BG),
+            ('BOX', (0, 0), (-1, -1), 1.5, PRIMARY_COLOR),
+            ('BACKGROUND', (0, 1), (0, -1), HEADER_BG),
+            ('BACKGROUND', (5, 0), (5, -1), BREAK_BG),
+            ('TEXTCOLOR', (5, 0), (5, -1), BREAK_TEXT),
         ]
 
-        row_idx = 1
-        for p in range(1, periods_count + 1):
-            row_idx += 1
-            if p == break_after and p < periods_count:
-                t_style.append(('BACKGROUND', (0, row_idx - 1), (-1, row_idx - 1), BREAK_BG))
-                row_idx += 1
+        # Span Friday dismissal across periods 5, 6, 7
+        if fri_row_idx is not None:
+            t_style.append(('SPAN', (6, fri_row_idx), (8, fri_row_idx)))
+            t_style.append(('BACKGROUND', (6, fri_row_idx), (8, fri_row_idx), colors.HexColor("#F8FAFC")))
 
-        table = Table(table_data, colWidths=col_widths, repeatRows=1)
+        table = Table(table_data, colWidths=col_widths, rowHeights=row_heights, repeatRows=1)
         table.setStyle(TableStyle(t_style))
         return table
 

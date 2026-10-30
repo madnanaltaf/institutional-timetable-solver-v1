@@ -208,35 +208,56 @@ class TimetableView(tb.Frame):
 
         start_row = 1 if (sec and sec.class_teacher_id) else 0
 
-        tb.Label(self.grid_container, text="Period / Timing", font=("Helvetica", 9, "bold"), bootstyle="inverse-primary", padding=6).grid(row=start_row, column=0, sticky="nsew", padx=1, pady=1)
-        for c_idx, day in enumerate(days, start=1):
-            fri_lbl = f" ({self.project.institution.get_periods_for_day(day)}P)" if day == "Friday" else ""
-            tb.Label(self.grid_container, text=f"{day}{fri_lbl}", font=("Helvetica", 9, "bold"), bootstyle="inverse-primary", padding=6).grid(row=start_row, column=c_idx, sticky="nsew", padx=1, pady=1)
+        # Header Row: Days by row, Periods by column!
+        col_idx = 0
+        tb.Label(self.grid_container, text="Day / Timing", font=("Helvetica", 9, "bold"), bootstyle="inverse-primary", padding=6).grid(row=start_row, column=col_idx, sticky="nsew", padx=1, pady=1)
+        col_idx += 1
 
-        row_idx = start_row + 1
-        for p in range(1, periods_count + 1):
+        for p in range(1, break_after + 1):
             time_lbl = self.project.institution.get_period_label(p)
-            tb.Label(self.grid_container, text=time_lbl, font=("Helvetica", 8, "bold"), bootstyle="secondary", padding=6).grid(row=row_idx, column=0, sticky="nsew", padx=1, pady=1)
+            tb.Label(self.grid_container, text=time_lbl, font=("Helvetica", 9, "bold"), bootstyle="inverse-primary", padding=6).grid(row=start_row, column=col_idx, sticky="nsew", padx=1, pady=1)
+            col_idx += 1
 
-            for c_idx, day in enumerate(days, start=1):
-                day_max_p = self.project.institution.get_periods_for_day(day)
-                if p > day_max_p:
-                    tb.Label(self.grid_container, text="— Early Dismissal —", font=("Helvetica", 8, "italic"), bootstyle="secondary-outline", padding=6).grid(row=row_idx, column=c_idx, sticky="nsew", padx=1, pady=1)
-                    continue
+        # Break Column
+        tb.Label(self.grid_container, text="RECESS\n11:00-11:30", font=("Helvetica", 8, "bold"), bootstyle="warning", padding=6).grid(row=start_row, column=col_idx, sticky="nsew", padx=1, pady=1)
+        col_idx += 1
 
+        for p in range(break_after + 1, periods_count + 1):
+            time_lbl = self.project.institution.get_period_label(p)
+            tb.Label(self.grid_container, text=time_lbl, font=("Helvetica", 9, "bold"), bootstyle="inverse-primary", padding=6).grid(row=start_row, column=col_idx, sticky="nsew", padx=1, pady=1)
+            col_idx += 1
+
+        total_cols = col_idx
+
+        # Day Rows
+        for r_idx, day in enumerate(days, start=start_row + 1):
+            col = 0
+            fri_lbl = "\n(4 Periods)" if day == "Friday" else ""
+            tb.Label(self.grid_container, text=f"{day}{fri_lbl}", font=("Helvetica", 9, "bold"), bootstyle="secondary", padding=6).grid(row=r_idx, column=col, sticky="nsew", padx=1, pady=1)
+            col += 1
+
+            day_max_p = self.project.institution.get_periods_for_day(day)
+
+            # Periods 1 to break_after
+            for p in range(1, break_after + 1):
                 slot = self.project.get_slot_at(day, p, sec_id)
-                self._create_cell_card(self.grid_container, slot, row_idx, c_idx, context="section")
+                self._create_cell_card(self.grid_container, slot, r_idx, col, context="section")
+                col += 1
 
-            row_idx += 1
+            # Recess Column
+            tb.Label(self.grid_container, text="☕ RECESS", font=("Helvetica", 8, "bold"), bootstyle="warning-outline", padding=4).grid(row=r_idx, column=col, sticky="nsew", padx=1, pady=1)
+            col += 1
 
-            # Recess break row
-            if p == break_after and p < periods_count:
-                tb.Label(self.grid_container, text="RECESS", font=("Helvetica", 8, "bold"), bootstyle="warning", padding=4).grid(row=row_idx, column=0, sticky="nsew", padx=1, pady=1)
-                for c_idx in range(1, len(days) + 1):
-                    tb.Label(self.grid_container, text="☕ Campus Break / Recess", font=("Helvetica", 8, "italic"), bootstyle="warning-outline", padding=4).grid(row=row_idx, column=c_idx, sticky="nsew", padx=1, pady=1)
-                row_idx += 1
+            # Periods after break
+            for p in range(break_after + 1, periods_count + 1):
+                if p > day_max_p:
+                    tb.Label(self.grid_container, text="— Dismissal —", font=("Helvetica", 8, "italic"), bootstyle="secondary-outline", padding=6).grid(row=r_idx, column=col, sticky="nsew", padx=1, pady=1)
+                else:
+                    slot = self.project.get_slot_at(day, p, sec_id)
+                    self._create_cell_card(self.grid_container, slot, r_idx, col, context="section")
+                col += 1
 
-        for c in range(len(days) + 1):
+        for c in range(total_cols):
             self.grid_container.columnconfigure(c, weight=1)
 
     # ------------------ 2. Teacher View ------------------ #
@@ -263,38 +284,57 @@ class TimetableView(tb.Frame):
 
         start_row = 1 if incharge_secs else 0
 
-        tb.Label(self.grid_container, text="Period / Timing", font=("Helvetica", 9, "bold"), bootstyle="inverse-primary", padding=6).grid(row=start_row, column=0, sticky="nsew", padx=1, pady=1)
-        for c_idx, day in enumerate(days, start=1):
-            fri_lbl = f" ({self.project.institution.get_periods_for_day(day)}P)" if day == "Friday" else ""
-            tb.Label(self.grid_container, text=f"{day}{fri_lbl}", font=("Helvetica", 9, "bold"), bootstyle="inverse-primary", padding=6).grid(row=start_row, column=c_idx, sticky="nsew", padx=1, pady=1)
+        # Header Row: Days by row, Periods by column!
+        col_idx = 0
+        tb.Label(self.grid_container, text="Day / Timing", font=("Helvetica", 9, "bold"), bootstyle="inverse-primary", padding=6).grid(row=start_row, column=col_idx, sticky="nsew", padx=1, pady=1)
+        col_idx += 1
 
-        row_idx = start_row + 1
-        for p in range(1, periods_count + 1):
+        for p in range(1, break_after + 1):
             time_lbl = self.project.institution.get_period_label(p)
-            tb.Label(self.grid_container, text=time_lbl, font=("Helvetica", 8, "bold"), bootstyle="secondary", padding=6).grid(row=row_idx, column=0, sticky="nsew", padx=1, pady=1)
+            tb.Label(self.grid_container, text=time_lbl, font=("Helvetica", 9, "bold"), bootstyle="inverse-primary", padding=6).grid(row=start_row, column=col_idx, sticky="nsew", padx=1, pady=1)
+            col_idx += 1
 
-            for c_idx, day in enumerate(days, start=1):
-                day_max_p = self.project.institution.get_periods_for_day(day)
-                if p > day_max_p:
-                    tb.Label(self.grid_container, text="— Early Dismissal —", font=("Helvetica", 8, "italic"), bootstyle="secondary-outline", padding=6).grid(row=row_idx, column=c_idx, sticky="nsew", padx=1, pady=1)
-                    continue
+        tb.Label(self.grid_container, text="RECESS\n11:00-11:30", font=("Helvetica", 8, "bold"), bootstyle="warning", padding=6).grid(row=start_row, column=col_idx, sticky="nsew", padx=1, pady=1)
+        col_idx += 1
 
+        for p in range(break_after + 1, periods_count + 1):
+            time_lbl = self.project.institution.get_period_label(p)
+            tb.Label(self.grid_container, text=time_lbl, font=("Helvetica", 9, "bold"), bootstyle="inverse-primary", padding=6).grid(row=start_row, column=col_idx, sticky="nsew", padx=1, pady=1)
+            col_idx += 1
+
+        total_cols = col_idx
+
+        # Day Rows
+        for r_idx, day in enumerate(days, start=start_row + 1):
+            col = 0
+            fri_lbl = "\n(4 Periods)" if day == "Friday" else ""
+            tb.Label(self.grid_container, text=f"{day}{fri_lbl}", font=("Helvetica", 9, "bold"), bootstyle="secondary", padding=6).grid(row=r_idx, column=col, sticky="nsew", padx=1, pady=1)
+            col += 1
+
+            day_max_p = self.project.institution.get_periods_for_day(day)
+
+            for p in range(1, break_after + 1):
                 if teacher and not teacher.is_available(day, p):
-                    tb.Label(self.grid_container, text="🚫 Blocked", font=("Helvetica", 8), bootstyle="danger-outline", padding=6).grid(row=row_idx, column=c_idx, sticky="nsew", padx=1, pady=1)
-                    continue
+                    tb.Label(self.grid_container, text="🚫 Blocked", font=("Helvetica", 8), bootstyle="danger-outline", padding=6).grid(row=r_idx, column=col, sticky="nsew", padx=1, pady=1)
+                else:
+                    slot = self.project.get_teacher_slot_at(day, p, t_id)
+                    self._create_cell_card(self.grid_container, slot, r_idx, col, context="teacher")
+                col += 1
 
-                slot = self.project.get_teacher_slot_at(day, p, t_id)
-                self._create_cell_card(self.grid_container, slot, row_idx, c_idx, context="teacher")
+            tb.Label(self.grid_container, text="☕ RECESS", font=("Helvetica", 8, "bold"), bootstyle="warning-outline", padding=4).grid(row=r_idx, column=col, sticky="nsew", padx=1, pady=1)
+            col += 1
 
-            row_idx += 1
+            for p in range(break_after + 1, periods_count + 1):
+                if p > day_max_p:
+                    tb.Label(self.grid_container, text="— Dismissal —", font=("Helvetica", 8, "italic"), bootstyle="secondary-outline", padding=6).grid(row=r_idx, column=col, sticky="nsew", padx=1, pady=1)
+                elif teacher and not teacher.is_available(day, p):
+                    tb.Label(self.grid_container, text="🚫 Blocked", font=("Helvetica", 8), bootstyle="danger-outline", padding=6).grid(row=r_idx, column=col, sticky="nsew", padx=1, pady=1)
+                else:
+                    slot = self.project.get_teacher_slot_at(day, p, t_id)
+                    self._create_cell_card(self.grid_container, slot, r_idx, col, context="teacher")
+                col += 1
 
-            if p == break_after and p < periods_count:
-                tb.Label(self.grid_container, text="RECESS", font=("Helvetica", 8, "bold"), bootstyle="warning", padding=4).grid(row=row_idx, column=0, sticky="nsew", padx=1, pady=1)
-                for c_idx in range(1, len(days) + 1):
-                    tb.Label(self.grid_container, text="☕ Recess", font=("Helvetica", 8, "italic"), bootstyle="warning-outline", padding=4).grid(row=row_idx, column=c_idx, sticky="nsew", padx=1, pady=1)
-                row_idx += 1
-
-        for c in range(len(days) + 1):
+        for c in range(total_cols):
             self.grid_container.columnconfigure(c, weight=1)
 
     # ------------------ 3. Room View ------------------ #

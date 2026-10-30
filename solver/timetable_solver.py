@@ -354,10 +354,29 @@ class TimetableSolver:
         and computes their soft constraint penalty.
         """
         valid_options = []
+        is_incharge_macro = any(
+            t.section_id in self.project.sections and self.project.sections[t.section_id].class_teacher_id == t.teacher_id
+            for t in macro.tasks
+        )
+        teacher_incharge_sec = {sec.class_teacher_id: sec.id for sec in self.project.sections.values() if sec.class_teacher_id}
 
         for day in self.working_days:
             day_periods = self.project.institution.get_periods_for_day(day)
-            for p in range(1, day_periods - macro.duration + 2):
+            max_p = day_periods - macro.duration + 1
+
+            if is_incharge_macro:
+                period_order = list(range(1, max_p + 1))
+            else:
+                period_order = list(range(2, max_p + 1)) + ([1] if max_p >= 1 else [])
+
+            for p in period_order:
+                # Class incharge must take first lecture in their class:
+                # Do not schedule incharge teachers in Period 1 for classes other than their own incharge class
+                if p == 1 and not is_incharge_macro:
+                    has_incharge_teacher = any(t.teacher_id in teacher_incharge_sec for t in macro.tasks)
+                    if has_incharge_teacher:
+                        continue
+
                 # 1. Recess break collision check for multi-period blocks
                 if macro.duration > 1:
                     # If break is after period B, cannot start at <= B and end at > B
