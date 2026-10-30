@@ -70,6 +70,12 @@ class TimetableProject:
     def get_teacher_duties(self, teacher_id: str) -> List[DutyAssignment]:
         return [d for d in self.duty_assignments if d.teacher_id == teacher_id]
 
+    def get_teacher_duty_at(self, day: str, period: int, teacher_id: str) -> Optional[DutyAssignment]:
+        for d in self.duty_assignments:
+            if d.teacher_id == teacher_id and d.day == day and d.period == period:
+                return d
+        return None
+
     def get_class_sections(self, class_id: str) -> List[Section]:
         return [sec for sec in self.sections.values() if sec.class_id == class_id]
 
