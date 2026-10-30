@@ -16,7 +16,6 @@ class TeachersView(tb.Frame):
         self.project = project
         self.on_update_callback = on_update_callback
         self.selected_teacher_id = None
-        self.subject_check_vars = {}
 
         self._build_ui()
         self.refresh()
@@ -96,30 +95,17 @@ class TeachersView(tb.Frame):
         self.spin_max_d = tb.Spinbox(f_r3, from_=1, to=8, width=5)
         self.spin_max_d.pack(side=LEFT, padx=(5, 0))
 
-        # Single Subject Specialization Combobox (User Requirement: 1 Teacher = 1 Specialized Field)
+        # Single Subject Specialization Combobox (1 Teacher = 1 Specialized Field)
         f_spec_single = tb.Frame(form_card)
-        f_spec_single.pack(fill=X, pady=(6, 4))
+        f_spec_single.pack(fill=X, pady=(6, 12))
         tb.Label(
             f_spec_single,
-            text="⭐ Specialized Subject Field (Single Subject Specialist):",
+            text="⭐ Single Subject Specialization (Specialist of One Field):",
             font=("Helvetica", 9, "bold"),
             bootstyle="primary"
-        ).pack(anchor=W, pady=(0, 2))
-        self.combo_primary_sub = tb.Combobox(f_spec_single, state="readonly")
+        ).pack(anchor=W, pady=(0, 4))
+        self.combo_primary_sub = tb.Combobox(f_spec_single, state="readonly", font=("Helvetica", 10))
         self.combo_primary_sub.pack(fill=X)
-        self.combo_primary_sub.bind("<<ComboboxSelected>>", self._on_primary_subject_changed)
-
-        # Subject Specialization Checklist Area
-        spec_box = tb.Labelframe(form_card, text=" Additional Qualified Subject Specializations (Optional) ", bootstyle="info", padding=6)
-        spec_box.pack(fill=X, pady=6)
-
-        spec_btns_row = tb.Frame(spec_box)
-        spec_btns_row.pack(fill=X, pady=(0, 4))
-        tb.Button(spec_btns_row, text="Select All Subjects", bootstyle="info-outline", command=self._select_all_subjects).pack(side=LEFT, padx=(0, 4))
-        tb.Button(spec_btns_row, text="Clear Subjects", bootstyle="secondary-outline", command=self._clear_all_subjects).pack(side=LEFT)
-
-        self.spec_grid_container = tb.Frame(spec_box)
-        self.spec_grid_container.pack(fill=X)
 
         # Buttons row
         btn_box = tb.Frame(form_card)
@@ -164,51 +150,20 @@ class TeachersView(tb.Frame):
         self.grid_scroll_container.pack(fill=BOTH, expand=True)
         self.grid_cells = {}
 
-    def _render_subject_checkboxes(self, qualified_ids=None):
-        for w in self.spec_grid_container.winfo_children():
-            w.destroy()
-
-        self.subject_check_vars = {}
-        if qualified_ids is None:
-            qualified_ids = []
-
-        subjects_list = list(self.project.subjects.values())
-        if not subjects_list:
-            tb.Label(self.spec_grid_container, text="No subjects created yet. Add subjects in Subjects tab.", font=("Helvetica", 8, "italic")).pack(anchor=W)
-            return
-
-        cols = 3
-        for idx, sub in enumerate(subjects_list):
-            r = idx // cols
-            c = idx % cols
-            var = tb.BooleanVar(value=(sub.id in qualified_ids))
-            self.subject_check_vars[sub.id] = var
-
-            chk = tb.Checkbutton(
-                self.spec_grid_container,
-                text=f"{sub.code} ({sub.name})",
-                variable=var,
-                bootstyle="round-toggle"
-            )
-            chk.grid(row=r, column=c, sticky=W, padx=4, pady=2)
-
-    def _select_all_subjects(self):
-        for var in self.subject_check_vars.values():
-            var.set(True)
-
-    def _clear_all_subjects(self):
-        for var in self.subject_check_vars.values():
-            var.set(False)
-
-    def _parse_id(self, text: str) -> str:
-        if "[" in text and text.endswith("]"):
-            return text.split("[")[-1].rstrip("]")
+    def _resolve_subject_id(self, text: str) -> str:
+        if not text:
+            return ""
+        if "[" in text and "]" in text:
+            raw_id = text.split("[")[-1].split("]")[0].strip()
+            if raw_id in self.project.subjects:
+                return raw_id
+        clean = text.strip().lower()
+        if clean in ("(select single subject specialization)", "(none)", ""):
+            return ""
+        for s_id, s in self.project.subjects.items():
+            if clean in (s_id.lower(), s.code.lower(), s.name.lower(), f"{s.name} ({s.code})".lower()):
+                return s_id
         return ""
-
-    def _on_primary_subject_changed(self, event):
-        sub_id = self._parse_id(self.combo_primary_sub.get())
-        if sub_id in self.subject_check_vars:
-            self.subject_check_vars[sub_id].set(True)
 
     def refresh(self):
         for item in self.tree.get_children():
@@ -240,7 +195,7 @@ class TeachersView(tb.Frame):
             self._populate_form_from_teacher(self.project.teachers[first_id])
             self._render_availability_grid()
         else:
-            self._render_subject_checkboxes([])
+            self._clear_form()
 
     def _on_tree_select(self, event):
         sel = self.tree.selection()
@@ -271,9 +226,6 @@ class TeachersView(tb.Frame):
         else:
             self.combo_primary_sub.set("(Select Single Subject Specialization)")
 
-        # Check specializations
-        self._render_subject_checkboxes(teacher.qualified_subjects)
-
     def _clear_form(self):
         self.selected_teacher_id = None
         self.entry_code.delete(0, "end")
@@ -282,7 +234,6 @@ class TeachersView(tb.Frame):
         self.spin_max_w.set(24)
         self.spin_max_d.set(5)
         self.combo_primary_sub.set("(Select Single Subject Specialization)")
-        self._clear_all_subjects()
         self.tree.selection_remove(self.tree.selection())
         self.lbl_selected_teacher.config(text="Select a faculty member from the list to view/edit availability matrix.")
 
@@ -424,12 +375,10 @@ class TeachersView(tb.Frame):
             self.entry_code.delete(0, "end")
             self.entry_code.insert(0, code)
 
-        primary_sub_id = self._parse_id(self.combo_primary_sub.get())
-        chosen_specs = [s_id for s_id, var in self.subject_check_vars.items() if var.get()]
-        if primary_sub_id and primary_sub_id not in chosen_specs:
-            chosen_specs.insert(0, primary_sub_id)
-        elif not primary_sub_id and chosen_specs:
-            primary_sub_id = chosen_specs[0]
+        primary_sub_id = self._resolve_subject_id(self.combo_primary_sub.get())
+        if not primary_sub_id:
+            messagebox.showwarning("Specialization Required", "Please select a Single Subject Specialization for this teacher.")
+            return
 
         t_id = f"t_{uuid.uuid4().hex[:6]}"
         new_teacher = Teacher(
@@ -438,10 +387,11 @@ class TeachersView(tb.Frame):
             code=code,
             email=self.entry_email.get().strip(),
             primary_subject_id=primary_sub_id,
-            qualified_subjects=chosen_specs,
+            qualified_subjects=[primary_sub_id],
             max_periods_per_week=int(self.spin_max_w.get() or 24),
             max_periods_per_day=int(self.spin_max_d.get() or 5)
         )
+        new_teacher.set_single_subject(primary_sub_id)
         self.project.teachers[t_id] = new_teacher
         self.selected_teacher_id = t_id
         self.refresh()
@@ -449,12 +399,12 @@ class TeachersView(tb.Frame):
             self.on_update_callback()
 
         sub_obj = self.project.subjects.get(primary_sub_id)
-        sub_name = sub_obj.name if sub_obj else "General"
-        messagebox.showinfo("Teacher Added", f"Teacher '{name}' ({code}) added successfully as specialist for {sub_name}!")
+        sub_name = sub_obj.name if sub_obj else "Subject Specialist"
+        messagebox.showinfo("Teacher Added", f"Teacher '{name}' ({code}) added successfully as single-subject specialist for {sub_name}!")
 
     def _on_update(self):
         if not self.selected_teacher_id or self.selected_teacher_id not in self.project.teachers:
-            messagebox.showwarning("Warning", "Select a teacher to update.")
+            messagebox.showwarning("Warning", "Select a teacher from the table to update.")
             return
 
         teacher = self.project.teachers[self.selected_teacher_id]
@@ -469,18 +419,15 @@ class TeachersView(tb.Frame):
             self.entry_code.delete(0, "end")
             self.entry_code.insert(0, code)
 
-        primary_sub_id = self._parse_id(self.combo_primary_sub.get())
-        chosen_specs = [s_id for s_id, var in self.subject_check_vars.items() if var.get()]
-        if primary_sub_id and primary_sub_id not in chosen_specs:
-            chosen_specs.insert(0, primary_sub_id)
-        elif not primary_sub_id and chosen_specs:
-            primary_sub_id = chosen_specs[0]
+        primary_sub_id = self._resolve_subject_id(self.combo_primary_sub.get())
+        if not primary_sub_id:
+            messagebox.showwarning("Specialization Required", "Please select a Single Subject Specialization for this teacher.")
+            return
 
         teacher.name = name
         teacher.code = code
         teacher.email = self.entry_email.get().strip()
-        teacher.primary_subject_id = primary_sub_id
-        teacher.qualified_subjects = chosen_specs
+        teacher.set_single_subject(primary_sub_id)
         teacher.max_periods_per_week = int(self.spin_max_w.get() or 24)
         teacher.max_periods_per_day = int(self.spin_max_d.get() or 5)
 
@@ -489,8 +436,8 @@ class TeachersView(tb.Frame):
             self.on_update_callback()
 
         sub_obj = self.project.subjects.get(primary_sub_id)
-        sub_name = sub_obj.name if sub_obj else "General"
-        messagebox.showinfo("Updated", f"Updated '{teacher.name}' ({teacher.code}) as specialist for {sub_name}!")
+        sub_name = sub_obj.name if sub_obj else "Subject Specialist"
+        messagebox.showinfo("Updated", f"Updated '{teacher.name}' ({teacher.code}) as single specialist for {sub_name} ({sub_obj.code if sub_obj else ''})!")
 
     def _on_delete(self):
         if not self.selected_teacher_id:

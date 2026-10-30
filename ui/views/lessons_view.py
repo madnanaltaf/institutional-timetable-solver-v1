@@ -383,9 +383,7 @@ class LessonsView(tb.Frame):
             self._update_teacher_dropdown_for_subject(sub.id)
 
         if teacher:
-            is_spec = (sub and teacher.teaches_subject(sub.id))
-            prefix = "⭐ Specialist: " if is_spec else ""
-            self.combo_teacher.set(f"{prefix}{teacher.name} ({teacher.code}) [{teacher.id}]")
+            self.combo_teacher.set(f"{teacher.name} ({teacher.code}) [{teacher.id}]")
             self._update_teacher_workload_label(teacher.id)
 
         if room:
@@ -412,39 +410,54 @@ class LessonsView(tb.Frame):
         if not subject_id:
             subject_id = self._resolve_subject_id(self.combo_subject.get())
 
-        specialist_teachers = []
-        other_teachers = []
-
-        for t in self.project.teachers.values():
-            if subject_id and t.teaches_subject(subject_id):
-                specialist_teachers.append(f"⭐ Specialist: {t.name} ({t.code}) [{t.id}]")
+        if subject_id:
+            # Strictly show ONLY teachers who specialize in this subject!
+            specialist_teachers = [
+                f"{t.name} ({t.code}) [{t.id}]"
+                for t in self.project.teachers.values()
+                if t.teaches_subject(subject_id)
+            ]
+            if specialist_teachers:
+                self.combo_teacher['values'] = specialist_teachers
+                cur_t_id = self._resolve_teacher_id(self.combo_teacher.get())
+                cur_t = self.project.teachers.get(cur_t_id)
+                # Keep current selection if valid for this subject, otherwise default to first specialist
+                if not cur_t or not cur_t.teaches_subject(subject_id):
+                    self.combo_teacher.set(specialist_teachers[0])
+                    first_t_id = self._resolve_teacher_id(specialist_teachers[0])
+                    self._update_teacher_workload_label(first_t_id)
+                else:
+                    self._update_teacher_workload_label(cur_t_id)
             else:
-                other_teachers.append(f"{t.name} ({t.code}) [{t.id}]")
-
-        combined = specialist_teachers + other_teachers
-        self.combo_teacher['values'] = combined
-        if specialist_teachers:
-            self.combo_teacher.set(specialist_teachers[0])
-            first_t_id = self._resolve_teacher_id(specialist_teachers[0])
-            self._update_teacher_workload_label(first_t_id)
-        elif combined:
-            self.combo_teacher.set(combined[0])
-            first_t_id = self._resolve_teacher_id(combined[0])
-            self._update_teacher_workload_label(first_t_id)
+                sub = self.project.subjects.get(subject_id)
+                sub_label = sub.name if sub else subject_id
+                self.combo_teacher['values'] = [f"(No specialist registered for {sub_label})"]
+                self.combo_teacher.set(f"(No specialist registered for {sub_label})")
+                self.lbl_teacher_workload.config(
+                    text=f"⚠️ No specialist faculty registered for {sub_label}.",
+                    bootstyle="warning"
+                )
+        else:
+            all_teachers = [f"{t.name} ({t.code}) [{t.id}]" for t in self.project.teachers.values()]
+            self.combo_teacher['values'] = all_teachers
+            if all_teachers and not self.combo_teacher.get():
+                self.combo_teacher.set(all_teachers[0])
+                first_t_id = self._resolve_teacher_id(all_teachers[0])
+                self._update_teacher_workload_label(first_t_id)
 
     def _on_teacher_selected_in_form(self, event):
         t_id = self._resolve_teacher_id(self.combo_teacher.get())
         if t_id:
             self._update_teacher_workload_label(t_id)
             teacher = self.project.teachers.get(t_id)
-            # If subject not selected yet, auto-select teacher's specialist field!
+            # Synchronize subject to teacher's single specialized field
             if teacher and teacher.primary_subject_id and teacher.primary_subject_id in self.project.subjects:
-                cur_sub_id = self._resolve_subject_id(self.combo_subject.get())
-                if not cur_sub_id:
-                    s = self.project.subjects[teacher.primary_subject_id]
-                    self.combo_subject.set(f"{s.name} ({s.code}) [{s.id}]")
-                    if s.allowed_double_period:
-                        self.spin_block.set(2)
+                s = self.project.subjects[teacher.primary_subject_id]
+                self.combo_subject.set(f"{s.name} ({s.code}) [{s.id}]")
+                if s.allowed_double_period:
+                    self.spin_block.set(2)
+                else:
+                    self.spin_block.set(1)
 
     def _update_teacher_workload_label(self, teacher_id: str):
         teacher = self.project.teachers.get(teacher_id)
@@ -468,8 +481,8 @@ class LessonsView(tb.Frame):
         self.tree.selection_remove(self.tree.selection())
 
     def _parse_id(self, text: str) -> str:
-        if "[" in text and text.endswith("]"):
-            return text.split("[")[-1].rstrip("]")
+        if "[" in text and "]" in text:
+            return text.split("[")[-1].split("]")[0].strip()
         return ""
 
     def _resolve_teacher_id(self, text: str) -> str:

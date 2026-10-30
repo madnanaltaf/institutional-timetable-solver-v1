@@ -103,14 +103,16 @@ The repository comes pre-loaded with an institution dataset (**Government Higher
   - **Urdu**: Kamran, Faisal.I, Shahzad, Ismail, Fayaz
   - **Mathematics**: Faizan, A.Rauf, Mohsin, Zawar, Ajmal, Danish
   - **Physics**: Sajid, S.Zaman, Irshad, Danish.S, Zulqurnain
-  - **Chemistry**: Bilal.H, A.Rehman, Ishaq, Usama, Mudasar
-  - **Biology**: Noman, Nazneen, Bilal.C, Umar
-  - **Information Technology / C.O**: Adnan, Shoaib Rashid, Noman (IT)
+  - **Chemistry**: Bilal.H, A.Rehman (Chem), Ishaq, Usama, Mudasar
+  - **Biology**: Noman (Bio), Nazneen, Bilal.C, Umar
+  - **Computer Science (CS)**: Adnan, Noman (IT)
+  - **General Science (GS)**: Aamir Ali
+  - **Counseling Officer (C.O)**: Shoaib Rashid
   - **Social Studies (SST)**: Zaheer, Akram, A.Rehman (SST)
-  - **Islamic Studies / T.Q**: F.Gulzar, Imran.H, Zakirullah, Abu.B
-  - **Fine Arts, Library & General**: Naveed (F.Art), Saleem (Lib), Aamir Ali
-- **210 Curriculum Lessons**: Fully balanced weekly curriculum.
-- **27 Classrooms & Labs**: 21 base section rooms + IT Computer Lab, Physics Lab, Chemistry Lab, Biology Lab, Arts Studio, and Library.
+  - **Islamic Studies / T.Q**: F.Gulzar, Imran.H, Zakirullah (T.Q), Abu.B
+  - **Fine Arts & Library**: Naveed (F.Art), Saleem (Lib)
+- **222 Curriculum Lessons**: Fully balanced weekly curriculum.
+- **28 Classrooms & Labs**: 21 base section rooms + Junior CS Lab, Senior CS Lab, Physics Lab, Chemistry Lab, Biology Lab, Arts Studio, and Library.
 
 ---
 
