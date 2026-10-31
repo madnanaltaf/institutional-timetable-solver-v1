@@ -67,14 +67,17 @@ class SolutionEvaluator:
                     breakdown["subject_fatigue_penalties"] += penalty
 
         # 2. Teacher Gaps & Consecutive Periods
-        teacher_day_slots: Dict[Tuple[str, str], List[int]] = {}
+        # Combined all-sections sessions repeat the same teacher in several section
+        # slots at the same time, so deduplicate periods per teacher/day.
+        teacher_day_slots: Dict[Tuple[str, str], set] = {}
         for s in schedule:
             key = (s.teacher_id, s.day)
+            bucket = teacher_day_slots.setdefault(key, set())
             for p in range(s.period, s.period + s.duration):
-                teacher_day_slots.setdefault(key, []).append(p)
+                bucket.add(p)
 
         for (t_id, day), periods in teacher_day_slots.items():
-            periods.sort()
+            periods = sorted(periods)
             teacher = self.project.teachers.get(t_id)
             max_consec = teacher.max_consecutive_periods if teacher else 3
             max_daily = teacher.max_periods_per_day if teacher else 5

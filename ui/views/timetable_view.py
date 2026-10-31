@@ -13,6 +13,7 @@ from models.timetable_data import TimetableProject
 from models.lesson import ScheduledSlot
 from solver.timetable_solver import TimetableSolver
 from solver.duty_solver import DutyRosterSolver
+from solver.validator import ProjectValidator
 from ui.dialogs.edit_slot_dialog import EditSlotDialog
 from exports.pdf_generator import TimetablePDFGenerator
 
@@ -23,6 +24,8 @@ class TimetableView(tb.Frame):
         super().__init__(parent)
         self.project = project
         self.on_update_callback = on_update_callback
+        self.swap_mode = False
+        self._swap_source_slot = None
 
         self._build_ui()
         self.refresh()
@@ -85,6 +88,17 @@ class TimetableView(tb.Frame):
             command=lambda: self._lock_all_slots(False)
         )
         self.btn_unlock_all.pack(side=LEFT, padx=(0, 6))
+
+        self.btn_swap = tb.Button(
+            controls,
+            text="🔁 Swap Mode",
+            bootstyle="info-outline",
+            command=self._toggle_swap_mode
+        )
+        self.btn_swap.pack(side=LEFT, padx=(0, 10))
+
+        self.lbl_swap_status = tb.Label(controls, text="", bootstyle="info")
+        self.lbl_swap_status.pack(side=LEFT)
 
         # Scrollable Grid Container
         self.grid_canvas_frame = tb.Frame(self)
@@ -489,6 +503,7 @@ class TimetableView(tb.Frame):
         is_locked = getattr(slot, 'is_locked', False)
         lock_badge = "🔒 " if is_locked else ""
         sync_badge = "🔬 Synced " if slot.sync_group_id else ""
+        combined_badge = "👥 All Sections " if slot.combined_group_id else ""
         dur_badge = f"[{slot.duration}P] " if slot.duration > 1 else ""
 
         if context == "section":
@@ -507,21 +522,35 @@ class TimetableView(tb.Frame):
             primary_txt = f"{lock_badge}{sub.code if sub else sub_name}"
             secondary_txt = f"{t_code} • {r_name}"
 
-        card_style = "warning" if is_locked else ("info" if slot.sync_group_id else "secondary")
+        is_swap_source = (
+            self.swap_mode and self._swap_source_slot is not None
+            and self._swap_source_slot.id == slot.id
+        )
+        if is_swap_source:
+            card_style = "danger"
+        elif is_locked:
+            card_style = "warning"
+        elif slot.combined_group_id:
+            card_style = "success"
+        elif slot.sync_group_id:
+            card_style = "info"
+        else:
+            card_style = "secondary"
+
         card = tb.Frame(parent, bootstyle=card_style, padding=4)
         card.grid(row=row, column=col, sticky="nsew", padx=1, pady=1)
 
         lbl_p = tb.Label(
             card,
-            text=primary_txt,
+            text=("🔁 " if is_swap_source else "") + primary_txt,
             font=("Helvetica", 8, "bold"),
-            bootstyle="primary" if not slot.sync_group_id else "info"
+            bootstyle="success" if slot.combined_group_id else ("primary" if not slot.sync_group_id else "info")
         )
         lbl_p.pack(anchor=W)
 
         lbl_s = tb.Label(
             card,
-            text=f"{sync_badge}{secondary_txt}",
+            text=f"{combined_badge}{sync_badge}{secondary_txt}",
             font=("Helvetica", 7),
             bootstyle="dark"
         )
@@ -533,8 +562,81 @@ class TimetableView(tb.Frame):
         lbl_s.bind("<Button-1>", lambda e, s=slot: self._on_card_click(s))
 
     def _on_card_click(self, slot: ScheduledSlot):
+        if self.swap_mode:
+            self._on_swap_select(slot)
+            return
         dlg = EditSlotDialog(self, self.project, slot, on_changed=self._render_grid)
         dlg.grab_set()
+
+    # ------------------ Manual Swap Mode ------------------ #
+    def _toggle_swap_mode(self):
+        self.swap_mode = not self.swap_mode
+        self._swap_source_slot = None
+        if self.swap_mode:
+            self.btn_swap.config(text="🔁 Swap Mode ON", bootstyle="info")
+            self.lbl_swap_status.config(text="Click the first lecture, then the lecture to swap it with.")
+        else:
+            self.btn_swap.config(text="🔁 Swap Mode", bootstyle="info-outline")
+            self.lbl_swap_status.config(text="")
+        self._render_grid()
+
+    def _slot_summary(self, slot: ScheduledSlot) -> str:
+        sec = self.project.sections.get(slot.section_id)
+        sub = self.project.subjects.get(slot.subject_id)
+        return f"{sec.display_name if sec else slot.section_id} — {sub.name if sub else slot.subject_id} ({slot.day} P{slot.period})"
+
+    def _on_swap_select(self, slot: ScheduledSlot):
+        if self._swap_source_slot is None:
+            self._swap_source_slot = slot
+            self.lbl_swap_status.config(text=f"Selected: {self._slot_summary(slot)}. Now click the lecture to swap with.")
+            self._render_grid()
+            return
+
+        if self._swap_source_slot.id == slot.id:
+            self._swap_source_slot = None
+            self.lbl_swap_status.config(text="Swap cancelled. Click a lecture to start again.")
+            self._render_grid()
+            return
+
+        self._perform_swap(self._swap_source_slot, slot)
+
+    def _perform_swap(self, source: ScheduledSlot, target: ScheduledSlot):
+        source_group = self.project.get_alignment_group(source)
+        target_group = self.project.get_alignment_group(target)
+        source_ids = {s.id for s in source_group}
+        target_ids = {s.id for s in target_group}
+
+        if source_ids & target_ids:
+            messagebox.showwarning("Cannot Swap", "These lectures are already part of the same aligned group.")
+            return
+
+        source_time = (source.day, source.period)
+        target_time = (target.day, target.period)
+
+        for s in source_group:
+            s.day, s.period = target_time
+        for s in target_group:
+            s.day, s.period = source_time
+
+        issues = [i for i in ProjectValidator(self.project).validate_schedule() if i.severity == "ERROR"]
+        if issues:
+            for s in source_group:
+                s.day, s.period = source_time
+            for s in target_group:
+                s.day, s.period = target_time
+            messagebox.showerror(
+                "Swap Blocked",
+                "That swap would create conflict(s):\n\n" + "\n".join(f"• {i.description}" for i in issues[:8])
+            )
+            return
+
+        self._swap_source_slot = None
+        self.lbl_swap_status.config(
+            text=f"Swapped OK: {len(source_group)} slot(s) ↔ {len(target_group)} slot(s). Pick another pair."
+        )
+        self._render_grid()
+        if self.on_update_callback:
+            self.on_update_callback()
 
     # ------------------ Lock / Pin Management ------------------ #
     def _toggle_section_lock(self, section_id: str, lock_state: bool):

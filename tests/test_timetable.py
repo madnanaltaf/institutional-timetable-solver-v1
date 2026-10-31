@@ -321,6 +321,96 @@ class TestTimetableSolver(unittest.TestCase):
         self.assertEqual(len(cs_12c), 2)
         self.assertEqual(sorted(cs_12c), sorted(chem_12b))
 
+    def test_combined_all_sections_sessions_same_time(self):
+        """All-sections lessons (C.O counselling) must appear in every section of a class at one time."""
+        proj = TimetableProject.load_from_file("sample_data/college_sample.json")
+        solver = TimetableSolver(proj, timeout_seconds=30.0)
+        res = solver.solve()
+        self.assertTrue(res.success, f"Solver failed: {res.message}")
+
+        groups = {}
+        for s in res.schedule:
+            if s.combined_group_id:
+                groups.setdefault(s.combined_group_id, []).append(s)
+
+        self.assertEqual(
+            {g.replace("COMB_CO_", "") for g in groups},
+            {str(grade) for grade in range(6, 13)},
+            f"Expected combined C.O sessions for grades 6-12, got {sorted(groups)}"
+        )
+
+        for gid, slots in groups.items():
+            sections = {s.section_id for s in slots}
+            times = {(s.day, s.period) for s in slots}
+            self.assertEqual(len(times), 1, f"{gid} was split across times: {times}")
+            self.assertEqual(len({s.teacher_id for s in slots}), 1, f"{gid} uses multiple teachers")
+            self.assertTrue(all(s.all_sections for s in slots), f"{gid} missing all_sections flag")
+
+            class_id = proj.sections[next(iter(sections))].class_id
+            expected = {sec.id for sec in proj.sections.values() if sec.class_id == class_id}
+            self.assertEqual(sections, expected, f"{gid} does not cover every section of the class")
+
+            # Alignment group helper used by manual move/swap must see the whole session
+            self.assertEqual(len(proj.get_alignment_group(slots[0])), len(slots))
+
+    def test_cross_grade_four_way_alignment(self):
+        """9C/10C CS must run simultaneously with 9B/10B Bio, and 11C/12C CS with 11B/12B Chem."""
+        proj = TimetableProject.load_from_file("sample_data/college_sample.json")
+        solver = TimetableSolver(proj, timeout_seconds=30.0)
+        res = solver.solve()
+        self.assertTrue(res.success, f"Solver failed: {res.message}")
+
+        aligned = {}
+        for s in res.schedule:
+            if s.sync_group_id:
+                aligned.setdefault(s.sync_group_id, []).append(s)
+
+        expected_groups = {
+            "ALIGN_09_10_BIO_CS": {
+                "s_9b": "sub_bio", "s_9c": "sub_cs",
+                "s_10b": "sub_bio", "s_10c": "sub_cs",
+            },
+            "ALIGN_11_12_CHEM_CS": {
+                "s_11b": "sub_chem", "s_11c": "sub_cs",
+                "s_12b": "sub_chem", "s_12c": "sub_cs",
+            },
+        }
+
+        for gid, expected_sections in expected_groups.items():
+            self.assertIn(gid, aligned, f"Missing alignment group {gid}")
+            slots = aligned[gid]
+            times = {(s.day, s.period) for s in slots}
+            self.assertEqual(len(times), 2, f"{gid} should meet twice a week, got {times}")
+
+            by_section = {}
+            for s in slots:
+                self.assertEqual(s.subject_id, expected_sections[s.section_id])
+                by_section.setdefault(s.section_id, set()).add((s.day, s.period))
+            self.assertEqual(set(by_section), set(expected_sections))
+            for sec_id, sec_times in by_section.items():
+                self.assertEqual(sec_times, times, f"{gid}: {sec_id} is not aligned with the group")
+
+    def test_validate_schedule_allows_combined_but_flags_conflicts(self):
+        """validate_schedule() accepts shared combined sessions yet catches real double-bookings."""
+        proj = TimetableProject.load_from_file("sample_data/college_sample.json")
+        solver = TimetableSolver(proj, timeout_seconds=30.0)
+        res = solver.solve()
+        self.assertTrue(res.success, f"Solver failed: {res.message}")
+        proj.schedule = res.schedule
+
+        errors = [i for i in ProjectValidator(proj).validate_schedule() if i.severity == "ERROR"]
+        self.assertEqual(errors, [], f"Valid schedule reported conflicts: {[e.title for e in errors]}")
+
+        # Strip the combined tag from one member: the shared teacher is now a genuine clash.
+        victim = next(s for s in proj.schedule if s.combined_group_id)
+        victim.combined_group_id = ""
+        victim.all_sections = False
+        errors = [i for i in ProjectValidator(proj).validate_schedule() if i.severity == "ERROR"]
+        self.assertTrue(
+            any("Teacher Double Booked" in e.title for e in errors),
+            f"Expected teacher double-booking after breaking a combined group, got {[e.title for e in errors]}"
+        )
+
     def test_manual_slot_locking_and_persistence(self):
         """Tests that locked slots are never moved or overwritten by the solver."""
         proj = TimetableProject.load_from_file("sample_data/college_sample.json")

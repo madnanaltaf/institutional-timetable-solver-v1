@@ -79,13 +79,44 @@ class TimetableProject:
     def get_class_sections(self, class_id: str) -> List[Section]:
         return [sec for sec in self.sections.values() if sec.class_id == class_id]
 
+    def get_combined_group_lessons(self, group_id: str) -> List[LessonAllocation]:
+        """Returns the per-section allocations that form one combined session."""
+        return [l for l in self.lessons.values() if group_id and l.combined_group_id == group_id]
+
+    def get_alignment_group(self, slot: ScheduledSlot) -> List[ScheduledSlot]:
+        """Returns every slot that must stay at the same time as this one
+        (its synchronized/combined peers in the same day and period)."""
+        if not slot.sync_group_id and not slot.combined_group_id:
+            return [slot]
+        return [
+            s for s in self.schedule
+            if s.day == slot.day and s.period == slot.period and (
+                (slot.combined_group_id and s.combined_group_id == slot.combined_group_id)
+                or (slot.sync_group_id and s.sync_group_id == slot.sync_group_id)
+            )
+        ]
+
     def get_teachers_for_subject(self, subject_id: str) -> List[Teacher]:
         """Returns teachers who specialize/are qualified in this subject."""
         return [t for t in self.teachers.values() if subject_id in t.qualified_subjects]
 
     def get_teacher_allocated_periods(self, teacher_id: str) -> int:
-        """Returns total weekly periods currently allocated to this teacher across all lessons."""
-        return sum(l.periods_per_week for l in self.lessons.values() if l.teacher_id == teacher_id)
+        """Returns total weekly periods currently allocated to this teacher across all lessons.
+
+        A combined all-sections session is taught once, so it is counted once even though
+        it has one allocation row per section.
+        """
+        total = 0
+        counted_groups = set()
+        for l in self.lessons.values():
+            if l.teacher_id != teacher_id:
+                continue
+            if l.combined_group_id:
+                if l.combined_group_id in counted_groups:
+                    continue
+                counted_groups.add(l.combined_group_id)
+            total += l.periods_per_week
+        return total
 
     def get_section_allocated_periods(self, section_id: str) -> int:
         """Returns total weekly periods currently allocated to this section across all lessons."""

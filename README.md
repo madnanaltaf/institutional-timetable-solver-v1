@@ -49,9 +49,12 @@ One-click generation of high-resolution vector PDF booklets with custom color ac
 - Mathematically guarantees that no teacher, section, or classroom is scheduled for more than one class simultaneously.
 - Strictly respects individual faculty unavailability matrices (part-time days, off-campus hours, personal leaves).
 
-### 2. Parallel Science Practicals Alignment (Synchronized Lab Swaps)
+### 2. Parallel Practical Alignment & Combined All-Sections Sessions
 - Seamlessly synchronizes practical laboratory sessions across sections (e.g., *Section A attends Computer Lab while Section B attends Chemistry Lab in the exact same time slot, and then they swap in a later slot*).
 - Enforces 2-period contiguous blocks without crossing institutional recess/lunch breaks.
+- **Combined all-sections sessions:** tick *Combined session* on an allocation (e.g. Counselling Officer) and one row is created for every section of that class. The solver places them all at the identical time, so the teacher appears in every section automatically.
+- **Cross-grade alignment at assignment time:** multi-select existing allocations in the Align panel to run them simultaneously (e.g. 9C/10C Computer Science with 9B/10B Biology, and 11C/12C CS with 11B/12B Chemistry). Aligned groups always move together.
+- **Manual swap & group-aware editing:** use *Swap Mode* to click two lectures and exchange their periods, or open any lecture to move its whole aligned group. Every manual change is validated against the full timetable and rolled back if it would double-book a section, teacher, or room.
 
 ### 3. Friday Reduced Periods & Early Dismissal
 - Natively accommodates institutions with fewer periods on Fridays (e.g., 4 or 5 periods for Jummah prayer / half-day dismissal) while maintaining standard period counts (e.g., 7 or 8 periods) Monday through Thursday.

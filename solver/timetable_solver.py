@@ -20,7 +20,8 @@ class TaskItem:
         task_id: str,
         lesson: LessonAllocation,
         duration: int,
-        sync_group_id: str = ""
+        sync_group_id: str = "",
+        combined_group_id: str = ""
     ):
         self.task_id = task_id
         self.lesson = lesson
@@ -30,6 +31,7 @@ class TaskItem:
         self.preferred_room_id = lesson.room_id
         self.duration = duration
         self.sync_group_id = sync_group_id
+        self.combined_group_id = combined_group_id
 
     def __repr__(self):
         return f"Task({self.task_id}: {self.section_id} {self.subject_id} T:{self.teacher_id} D:{self.duration})"
@@ -40,11 +42,20 @@ class MacroTask:
     A collection of TaskItems that must be scheduled in the EXACT same (day, period).
     Used for aligned parallel practicals (e.g. Sec A CS Lab & Sec B Chem Lab).
     """
-    def __init__(self, macro_id: str, tasks: List[TaskItem], duration: int, sync_group_id: str = ""):
+    def __init__(
+        self,
+        macro_id: str,
+        tasks: List[TaskItem],
+        duration: int,
+        sync_group_id: str = "",
+        combined_group_id: str = ""
+    ):
         self.macro_id = macro_id
         self.tasks = tasks
         self.duration = duration
         self.sync_group_id = sync_group_id
+        self.combined_group_id = combined_group_id
+        self.is_combined = bool(combined_group_id)
 
     @property
     def sections(self) -> Set[str]:
@@ -195,9 +206,11 @@ class TimetableSolver:
             )
 
     def _prepare_macro_tasks(self):
-        """Builds MacroTasks, grouping synchronized parallel practicals together."""
+        """Builds MacroTasks, grouping synchronized practicals and combined
+        all-sections sessions that must share one exact time slot."""
         self.macro_tasks = []
         sync_groups: Dict[str, List[TaskItem]] = {}
+        combined_groups: Dict[str, List[TaskItem]] = {}
         standalone_tasks: List[TaskItem] = []
 
         # Deduct periods already fulfilled by user-locked slots
@@ -217,75 +230,85 @@ class TimetableSolver:
 
             # Create blocks
             for b in range(num_blocks):
-                t_id = f"T_{lesson_id}_{b}"
                 item = TaskItem(
-                    task_id=t_id,
+                    task_id=f"T_{lesson_id}_{b}",
                     lesson=lesson,
                     duration=block_size,
-                    sync_group_id=lesson.sync_group_id
+                    sync_group_id=lesson.sync_group_id,
+                    combined_group_id=lesson.combined_group_id
                 )
-                if lesson.sync_group_id:
+                if lesson.combined_group_id:
+                    combined_groups.setdefault(lesson.combined_group_id, []).append(item)
+                elif lesson.sync_group_id:
                     sync_groups.setdefault(lesson.sync_group_id, []).append(item)
                 else:
                     standalone_tasks.append(item)
 
-            # Create remainder single periods if any
+            # Remainder single periods stay aligned with their group
             for r in range(remainder):
-                t_id = f"T_{lesson_id}_rem_{r}"
                 item = TaskItem(
-                    task_id=t_id,
+                    task_id=f"T_{lesson_id}_rem_{r}",
                     lesson=lesson,
                     duration=1,
-                    sync_group_id=""
+                    sync_group_id=lesson.sync_group_id,
+                    combined_group_id=lesson.combined_group_id
                 )
-                standalone_tasks.append(item)
+                if lesson.combined_group_id:
+                    combined_groups.setdefault(lesson.combined_group_id, []).append(item)
+                elif lesson.sync_group_id:
+                    sync_groups.setdefault(lesson.sync_group_id, []).append(item)
+                else:
+                    standalone_tasks.append(item)
 
-        # Group synchronized tasks
         macro_idx = 1
-        for sg_id, items in sync_groups.items():
-            # Items in a sync group might belong to different pairs/blocks.
-            # E.g. Sec A and Sec B both have 1 block of CS/Chem lab.
-            # Group items by section to pair them up
-            sec_to_items: Dict[str, List[TaskItem]] = {}
-            for it in items:
-                sec_to_items.setdefault(it.section_id, []).append(it)
 
-            # Determine number of synchronized instances
-            max_instances = max(len(lst) for lst in sec_to_items.values())
-            for inst in range(max_instances):
-                coupled_tasks: List[TaskItem] = []
-                duration = 2
-                for sec_id, sec_items in sec_to_items.items():
-                    if inst < len(sec_items):
-                        coupled_tasks.append(sec_items[inst])
-                        duration = sec_items[inst].duration
+        def add_grouped_macros(groups: Dict[str, List[TaskItem]], is_combined: bool):
+            nonlocal macro_idx
+            for group_id, items in groups.items():
+                # Items in a group might belong to different pairs/blocks.
+                # Group items by section first, then pair instance by instance.
+                sec_to_items: Dict[str, List[TaskItem]] = {}
+                for it in items:
+                    sec_to_items.setdefault(it.section_id, []).append(it)
 
-                macro = MacroTask(
-                    macro_id=f"MACRO_SYNC_{macro_idx}",
-                    tasks=coupled_tasks,
-                    duration=duration,
-                    sync_group_id=sg_id
-                )
-                self.macro_tasks.append(macro)
-                macro_idx += 1
+                max_instances = max(len(lst) for lst in sec_to_items.values())
+                for inst in range(max_instances):
+                    coupled_tasks = [
+                        sec_items[inst]
+                        for sec_items in sec_to_items.values()
+                        if inst < len(sec_items)
+                    ]
+                    duration = max(t.duration for t in coupled_tasks)
+                    self.macro_tasks.append(MacroTask(
+                        macro_id=f"MACRO_{'COMB' if is_combined else 'SYNC'}_{macro_idx}",
+                        tasks=coupled_tasks,
+                        duration=duration,
+                        sync_group_id="" if is_combined else group_id,
+                        combined_group_id=group_id if is_combined else ""
+                    ))
+                    macro_idx += 1
+
+        add_grouped_macros(combined_groups, True)
+        add_grouped_macros(sync_groups, False)
 
         # Add standalone tasks as single-task macros
         for task in standalone_tasks:
             macro = MacroTask(
                 macro_id=f"MACRO_STD_{macro_idx}",
                 tasks=[task],
-                duration=task.duration,
-                sync_group_id=""
+                duration=task.duration
             )
             self.macro_tasks.append(macro)
             macro_idx += 1
 
-        # Heuristic sort: Coupled sync groups first, then longer duration, then higher priority
+        # Heuristic sort: combined sessions first (hardest), then larger groups,
+        # then longer duration, then higher priority
         self.macro_tasks.sort(
             key=lambda m: (
-                -len(m.tasks),       # More synchronized tasks first
-                -m.duration,         # Double periods first
-                -max(t.lesson.priority for t in m.tasks)  # Priority
+                0 if m.is_combined else 1,
+                -len(m.tasks),
+                -m.duration,
+                -max(t.lesson.priority for t in m.tasks)
             )
         )
 
@@ -404,9 +427,26 @@ class TimetableSolver:
                     if p <= self.break_after_period < p + macro.duration:
                         continue
 
+                # Combined sessions can share one venue (e.g. auditorium) when all
+                # their allocations point at the same room.
+                shared_room_id = ""
+                if macro.is_combined:
+                    preferred = {t.preferred_room_id for t in macro.tasks}
+                    if len(preferred) == 1 and next(iter(preferred)):
+                        shared_room_id = next(iter(preferred))
+
                 # 2. Check hard constraints for all tasks in the macro
                 hard_ok = True
                 task_rooms: Dict[str, str] = {}
+
+                if shared_room_id:
+                    if shared_room_id not in self.project.classrooms:
+                        continue
+                    if any(
+                        (day, d_p, shared_room_id) in self.room_occupancy
+                        for d_p in range(p, p + macro.duration)
+                    ):
+                        continue
 
                 for task in macro.tasks:
                     # Section free?
@@ -418,6 +458,8 @@ class TimetableSolver:
                         break
 
                     # Teacher free & available?
+                    # Combined sessions intentionally put the same teacher in every
+                    # section at this time, so the shared teacher is checked once.
                     teacher = self.project.teachers.get(task.teacher_id)
                     if teacher:
                         for d_p in range(p, p + macro.duration):
@@ -430,12 +472,14 @@ class TimetableSolver:
                     if not hard_ok:
                         break
 
-                    # Room assignment
-                    assigned_room = self._find_available_room(task, day, p, macro.duration, task_rooms)
-                    if not assigned_room:
-                        hard_ok = False
-                        break
-                    task_rooms[task.task_id] = assigned_room
+                    if shared_room_id:
+                        task_rooms[task.task_id] = shared_room_id
+                    else:
+                        assigned_room = self._find_available_room(task, day, p, macro.duration, task_rooms)
+                        if not assigned_room:
+                            hard_ok = False
+                            break
+                        task_rooms[task.task_id] = assigned_room
 
                 if not hard_ok:
                     continue
@@ -583,7 +627,9 @@ class TimetableSolver:
                     day=day,
                     period=period,
                     duration=macro.duration,
-                    sync_group_id=macro.sync_group_id
+                    sync_group_id=macro.sync_group_id,
+                    combined_group_id=macro.combined_group_id,
+                    all_sections=macro.is_combined
                 )
                 slots.append(slot)
         return slots

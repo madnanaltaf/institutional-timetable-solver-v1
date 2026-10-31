@@ -179,9 +179,41 @@ class LessonsView(tb.Frame):
         self.spin_block = tb.Spinbox(f_b, from_=1, to=3, width=6)
         self.spin_block.pack(fill=X)
 
-        tb.Label(form_card, text="Synchronized Practical Alignment Tag (Optional):").pack(anchor=W, pady=(4, 2))
-        self.entry_sync = tb.Entry(form_card)
-        self.entry_sync.pack(fill=X, pady=(0, 15))
+        self.var_all_sections = tb.BooleanVar(value=False)
+        self.chk_all_sections = tb.Checkbutton(
+            form_card,
+            text="👥 Combined session — every section of this class at the same time",
+            variable=self.var_all_sections,
+            bootstyle="success-round-toggle"
+        )
+        self.chk_all_sections.pack(anchor=W, pady=(6, 4))
+
+        align_hdr = tb.Frame(form_card)
+        align_hdr.pack(fill=X, pady=(4, 2))
+        tb.Label(
+            align_hdr,
+            text="🔗 Align at the same time with (Ctrl+Click to multi-select):",
+            font=("Helvetica", 9, "bold")
+        ).pack(side=LEFT)
+        tb.Button(
+            align_hdr,
+            text="✂️ Clear Alignment",
+            bootstyle="secondary-outline",
+            padding=(4, 0),
+            command=self._on_clear_alignment
+        ).pack(side=RIGHT)
+
+        align_cols = ("section", "subject", "teacher", "group")
+        self.tree_align = tb.Treeview(form_card, columns=align_cols, show="headings", height=4, selectmode="extended", bootstyle="info")
+        self.tree_align.heading("section", text="Class / Section")
+        self.tree_align.heading("subject", text="Subject")
+        self.tree_align.heading("teacher", text="Faculty")
+        self.tree_align.heading("group", text="Aligned Group")
+        self.tree_align.column("section", width=110, anchor=W)
+        self.tree_align.column("subject", width=90, anchor=W)
+        self.tree_align.column("teacher", width=90, anchor=W)
+        self.tree_align.column("group", width=90, anchor=W)
+        self.tree_align.pack(fill=X, pady=(0, 8))
 
         # Action Buttons
         btn_box = tb.Frame(form_card)
@@ -211,6 +243,7 @@ class LessonsView(tb.Frame):
 
         self._refresh_filter_options()
         self._refresh_allotments_table()
+        self._refresh_align_tree()
         self._update_teacher_dropdown_for_subject()
 
     def _on_mode_switched(self):
@@ -283,6 +316,51 @@ class LessonsView(tb.Frame):
                 if sec:
                     self.combo_active_filter.set(f"{sec.display_name} [{sec.id}]")
                 self._refresh_allotments_table()
+            self._refresh_align_tree()
+
+    def _alignment_label(self, lesson: LessonAllocation) -> str:
+        if lesson.combined_group_id:
+            return "👥 All Sections"
+        return lesson.sync_group_name or lesson.sync_group_id or "—"
+
+    def _refresh_align_tree(self):
+        """Lists allocations from other sections that a lesson can be aligned with."""
+        for iid in self.tree_align.get_children():
+            self.tree_align.delete(iid)
+
+        target_sec_id = self._resolve_section_id(self.combo_form_sec.get()) or self.selected_section_id
+        for l in self.project.lessons.values():
+            if l.combined_group_id or l.section_id == target_sec_id:
+                continue
+            sec = self.project.sections.get(l.section_id)
+            sub = self.project.subjects.get(l.subject_id)
+            teacher = self.project.teachers.get(l.teacher_id)
+            self.tree_align.insert(
+                "", "end", iid=l.id,
+                values=(
+                    sec.display_name if sec else l.section_id,
+                    sub.name if sub else l.subject_id,
+                    teacher.name if teacher else l.teacher_id,
+                    self._alignment_label(l)
+                )
+            )
+
+    def _get_selected_align_ids(self) -> list:
+        return list(self.tree_align.selection())
+
+    def _select_alignment_peers(self, lesson: LessonAllocation):
+        self.tree_align.selection_remove(self.tree_align.selection())
+        group_id = lesson.combined_group_id or lesson.sync_group_id
+        if not group_id:
+            return
+        for peer in self.project.lessons.values():
+            if peer.id == lesson.id:
+                continue
+            if (lesson.combined_group_id and peer.combined_group_id == group_id) or (
+                lesson.sync_group_id and peer.sync_group_id == group_id
+            ):
+                if self.tree_align.exists(peer.id):
+                    self.tree_align.selection_add(peer.id)
 
     def _refresh_allotments_table(self):
         for item in self.tree.get_children():
@@ -319,7 +397,7 @@ class LessonsView(tb.Frame):
                 t_str = f"{teacher.name} ({teacher.code}){spec_badge}" if teacher else l.teacher_id
 
                 r_name = room.name if room else (sub.default_room_type if sub else "Classroom")
-                sync_lbl = l.sync_group_name or l.sync_group_id or "—"
+                sync_lbl = self._alignment_label(l)
 
                 self.tree.insert(
                     "", "end", iid=l.id,
@@ -353,7 +431,7 @@ class LessonsView(tb.Frame):
                 sub_type = sub.subject_type if sub else "Theory"
 
                 r_name = room.name if room else (sub.default_room_type if sub else "Classroom")
-                sync_lbl = l.sync_group_name or l.sync_group_id or "—"
+                sync_lbl = self._alignment_label(l)
 
                 self.tree.insert(
                     "", "end", iid=l.id,
@@ -393,8 +471,8 @@ class LessonsView(tb.Frame):
 
         self.spin_periods.set(l.periods_per_week)
         self.spin_block.set(l.block_size)
-        self.entry_sync.delete(0, "end")
-        self.entry_sync.insert(0, l.sync_group_id)
+        self.var_all_sections.set(bool(l.combined_group_id))
+        self._select_alignment_peers(l)
 
     def _on_subject_selected_in_form(self, event):
         sub_id = self._resolve_subject_id(self.combo_subject.get())
@@ -476,7 +554,8 @@ class LessonsView(tb.Frame):
         self.selected_lesson_id = None
         self.spin_periods.set(4)
         self.spin_block.set(1)
-        self.entry_sync.delete(0, "end")
+        self.var_all_sections.set(False)
+        self.tree_align.selection_remove(self.tree_align.selection())
         self.lbl_teacher_workload.config(text="Teacher Weekly Load: —", bootstyle="secondary")
         self.tree.selection_remove(self.tree.selection())
 
@@ -515,34 +594,202 @@ class LessonsView(tb.Frame):
                 return sec.id
         return ""
 
+    def _read_form_values(self):
+        return (
+            self._resolve_section_id(self.combo_form_sec.get()) or self.selected_section_id,
+            self._resolve_subject_id(self.combo_subject.get()),
+            self._resolve_teacher_id(self.combo_teacher.get()),
+            self._parse_id(self.combo_room.get()),
+            int(self.spin_periods.get() or 4),
+            int(self.spin_block.get() or 1),
+        )
+
+    def _validate_alignment(self, align_ids, target_sec_id, teacher_id, block_size, room_id):
+        selected = [self.project.lessons[lid] for lid in align_ids if lid in self.project.lessons]
+        if not selected:
+            return "Select at least one existing allocation to align with."
+        if any(l.section_id == target_sec_id for l in selected):
+            return "Two lessons of the same section cannot be aligned at the same time."
+        if any(l.combined_group_id for l in selected):
+            return "Combined all-sections rows are aligned automatically — untick 'Combined session' to align manually."
+        if any(l.block_size != block_size for l in selected):
+            return "Aligned lessons must use the same block size."
+        if any(l.teacher_id == teacher_id for l in selected):
+            return "The same teacher cannot teach two aligned lessons at the same time."
+        rooms = [l.room_id for l in selected if l.room_id]
+        if room_id and room_id in rooms:
+            return "Two aligned lessons would occupy the same room at the same time."
+        if len(rooms) != len(set(rooms)):
+            return "Two of the selected lessons already share the same room — they cannot be aligned."
+        return ""
+
+    def _apply_alignment(self, align_ids, target_sec_id, teacher_id, block_size, room_id):
+        """Links the selected lessons into one simultaneous group. Returns (group_id, name)."""
+        err = self._validate_alignment(align_ids, target_sec_id, teacher_id, block_size, room_id)
+        if err:
+            messagebox.showerror("Alignment Error", err)
+            return None
+
+        lessons = [self.project.lessons[lid] for lid in align_ids if lid in self.project.lessons]
+        group_ids = {l.sync_group_id for l in lessons if l.sync_group_id}
+        if len(group_ids) == 1:
+            group_id = next(iter(group_ids))
+            group_name = next((l.sync_group_name for l in lessons if l.sync_group_name), "")
+        else:
+            group_id = f"SYNC_ALIGN_{uuid.uuid4().hex[:6]}"
+            group_name = "Custom Aligned Group"
+
+        for l in lessons:
+            l.sync_group_id = group_id
+            l.sync_group_name = group_name
+            l.combined_group_id = ""
+            l.all_sections = False
+        return group_id, group_name
+
+    def _create_combined_session(self, target_sec_id, sub_id, t_id, r_id, periods, block):
+        sec = self.project.sections.get(target_sec_id)
+        if not sec:
+            return []
+        class_secs = self.project.get_class_sections(sec.class_id)
+        if len(class_secs) < 2:
+            messagebox.showwarning("Single-Section Class", "This class has only one section, so a normal allocation is created instead.")
+            l = LessonAllocation(
+                id=f"L_{uuid.uuid4().hex[:6]}", section_id=target_sec_id,
+                subject_id=sub_id, teacher_id=t_id, room_id=r_id,
+                periods_per_week=periods, block_size=block
+            )
+            self.project.lessons[l.id] = l
+            return [l.id]
+
+        group_id = f"COMBINED_{uuid.uuid4().hex[:8]}"
+        created = []
+        for cs in class_secs:
+            l = LessonAllocation(
+                id=f"L_{uuid.uuid4().hex[:6]}",
+                section_id=cs.id,
+                subject_id=sub_id,
+                teacher_id=t_id,
+                room_id=r_id,
+                periods_per_week=periods,
+                block_size=block,
+                combined_group_id=group_id,
+                all_sections=True
+            )
+            self.project.lessons[l.id] = l
+            created.append(l.id)
+        return created
+
+    def _save_combined_session(self, lesson, target_sec_id, sub_id, t_id, r_id, periods, block):
+        sec = self.project.sections.get(target_sec_id)
+        if not sec:
+            return
+        class_secs = self.project.get_class_sections(sec.class_id)
+        if len(class_secs) < 2:
+            messagebox.showwarning("Single-Section Class", "This class has only one section; the combined session cannot be created.")
+            return
+
+        group_id = lesson.combined_group_id
+        section_ids = {cs.id for cs in class_secs}
+        existing = [x for x in self.project.lessons.values() if group_id and x.combined_group_id == group_id]
+
+        if not group_id:
+            # Converting a standalone row: rebuild all section rows from scratch.
+            del self.project.lessons[lesson.id]
+            existing = []
+        elif any(x.section_id not in section_ids for x in existing):
+            # The target class changed: drop the old group and rebuild.
+            for x in existing:
+                del self.project.lessons[x.id]
+            existing = []
+            group_id = ""
+
+        if not group_id:
+            group_id = f"COMBINED_{uuid.uuid4().hex[:8]}"
+            existing = []
+
+        by_section = {x.section_id: x for x in existing}
+        for cs in class_secs:
+            peer = by_section.get(cs.id)
+            if peer is None:
+                peer = LessonAllocation(
+                    id=f"L_{uuid.uuid4().hex[:6]}",
+                    section_id=cs.id,
+                    subject_id=sub_id,
+                    teacher_id=t_id,
+                    room_id=r_id,
+                    periods_per_week=periods,
+                    block_size=block
+                )
+                self.project.lessons[peer.id] = peer
+            peer.subject_id = sub_id
+            peer.teacher_id = t_id
+            peer.room_id = r_id
+            peer.periods_per_week = periods
+            peer.block_size = block
+            peer.combined_group_id = group_id
+            peer.all_sections = True
+            peer.sync_group_id = ""
+            peer.sync_group_name = ""
+            if cs.id == target_sec_id:
+                self.selected_lesson_id = peer.id
+
+    def _dissolve_combined_group(self, lesson):
+        """Unlinks a combined session, keeping the selected row and deleting its peers."""
+        group_id = lesson.combined_group_id
+        for x in list(self.project.lessons.values()):
+            if x.combined_group_id and x.combined_group_id == group_id:
+                if x.id == lesson.id:
+                    x.combined_group_id = ""
+                    x.all_sections = False
+                else:
+                    del self.project.lessons[x.id]
+
     def _on_add(self):
-        target_sec_id = self._resolve_section_id(self.combo_form_sec.get()) or self.selected_section_id
+        target_sec_id, sub_id, t_id, r_id, periods, block = self._read_form_values()
         if not target_sec_id:
             messagebox.showerror("Error", "Please select a Target Class & Section.")
             return
-
-        sub_id = self._resolve_subject_id(self.combo_subject.get())
-        t_id = self._resolve_teacher_id(self.combo_teacher.get())
-        r_id = self._parse_id(self.combo_room.get())
-
         if not sub_id or not t_id:
             messagebox.showerror("Error", "Subject and Faculty Instructor are required.")
             return
 
-        l_id = f"L_{uuid.uuid4().hex[:6]}"
-        l = LessonAllocation(
-            id=l_id,
-            section_id=target_sec_id,
-            subject_id=sub_id,
-            teacher_id=t_id,
-            room_id=r_id,
-            periods_per_week=int(self.spin_periods.get() or 4),
-            block_size=int(self.spin_block.get() or 1),
-            sync_group_id=self.entry_sync.get().strip()
-        )
-        self.project.lessons[l_id] = l
-        self.selected_lesson_id = l_id
+        combined = bool(self.var_all_sections.get())
+        align_ids = self._get_selected_align_ids()
+        if combined and align_ids:
+            messagebox.showerror("Choose One", "Use either a combined all-sections session or a manual alignment, not both.")
+            return
+
+        if combined:
+            created = self._create_combined_session(target_sec_id, sub_id, t_id, r_id, periods, block)
+            if not created:
+                return
+            self.selected_lesson_id = created[0]
+            detail = f"all {len(created)} sections of the class"
+        else:
+            sync_gid, sync_name = "", ""
+            if align_ids:
+                group = self._apply_alignment(align_ids, target_sec_id, t_id, block, r_id)
+                if group is None:
+                    return
+                sync_gid, sync_name = group
+
+            l_id = f"L_{uuid.uuid4().hex[:6]}"
+            self.project.lessons[l_id] = LessonAllocation(
+                id=l_id,
+                section_id=target_sec_id,
+                subject_id=sub_id,
+                teacher_id=t_id,
+                room_id=r_id,
+                periods_per_week=periods,
+                block_size=block,
+                sync_group_id=sync_gid,
+                sync_group_name=sync_name
+            )
+            self.selected_lesson_id = l_id
+            detail = "the selected section"
+
         self._refresh_allotments_table()
+        self._refresh_align_tree()
         self._update_teacher_workload_label(t_id)
 
         if self.on_update_callback:
@@ -551,32 +798,60 @@ class LessonsView(tb.Frame):
         sec = self.project.sections.get(target_sec_id)
         sub = self.project.subjects.get(sub_id)
         teacher = self.project.teachers.get(t_id)
-        messagebox.showinfo("Assigned", f"Allotted {l.periods_per_week} periods of {sub.name if sub else 'Subject'} with {teacher.name if teacher else 'Teacher'} to {sec.display_name if sec else 'Section'}!")
+        messagebox.showinfo(
+            "Assigned",
+            f"Allotted {periods} periods of {sub.name if sub else 'Subject'} with "
+            f"{teacher.name if teacher else 'Teacher'} to {sec.display_name if sec else 'Section'} "
+            f"({detail})!"
+        )
 
     def _on_update(self):
         if not self.selected_lesson_id or self.selected_lesson_id not in self.project.lessons:
             messagebox.showwarning("Warning", "Select an allotted subject row to update.")
             return
 
-        target_sec_id = self._resolve_section_id(self.combo_form_sec.get()) or self.selected_section_id
-        sub_id = self._resolve_subject_id(self.combo_subject.get())
-        t_id = self._resolve_teacher_id(self.combo_teacher.get())
-        r_id = self._parse_id(self.combo_room.get())
-
+        target_sec_id, sub_id, t_id, r_id, periods, block = self._read_form_values()
         if not target_sec_id or not sub_id or not t_id:
             messagebox.showerror("Error", "Section, Subject and Teacher are required.")
             return
 
         l = self.project.lessons[self.selected_lesson_id]
-        l.section_id = target_sec_id
-        l.subject_id = sub_id
-        l.teacher_id = t_id
-        l.room_id = r_id
-        l.periods_per_week = int(self.spin_periods.get() or 4)
-        l.block_size = int(self.spin_block.get() or 1)
-        l.sync_group_id = self.entry_sync.get().strip()
+        combined = bool(self.var_all_sections.get())
+        align_ids = self._get_selected_align_ids()
+        if combined and align_ids:
+            messagebox.showerror("Choose One", "Use either a combined all-sections session or a manual alignment, not both.")
+            return
+
+        if combined:
+            self._save_combined_session(l, target_sec_id, sub_id, t_id, r_id, periods, block)
+        else:
+            if l.combined_group_id:
+                if not messagebox.askyesno(
+                    "Break Combined Session",
+                    "This removes the combined all-sections session and deletes the other sections' rows. Continue?"
+                ):
+                    return
+                self._dissolve_combined_group(l)
+
+            l.section_id = target_sec_id
+            l.subject_id = sub_id
+            l.teacher_id = t_id
+            l.room_id = r_id
+            l.periods_per_week = periods
+            l.block_size = block
+            l.combined_group_id = ""
+            l.all_sections = False
+
+            if align_ids:
+                group = self._apply_alignment(align_ids, target_sec_id, t_id, block, r_id)
+                if group is None:
+                    return
+                l.sync_group_id, l.sync_group_name = group
+            elif not l.sync_group_id:
+                l.sync_group_name = ""
 
         self._refresh_allotments_table()
+        self._refresh_align_tree()
         self._update_teacher_workload_label(t_id)
 
         if self.on_update_callback:
@@ -587,17 +862,49 @@ class LessonsView(tb.Frame):
     def _on_delete(self):
         if not self.selected_lesson_id:
             return
-        if messagebox.askyesno("Remove Allotment", "Remove this subject allotment?"):
+        lesson = self.project.lessons.get(self.selected_lesson_id)
+        if not lesson:
+            return
+
+        if lesson.combined_group_id:
+            group = [l for l in self.project.lessons.values() if l.combined_group_id == lesson.combined_group_id]
+            if not messagebox.askyesno("Remove Combined Session", f"Remove this combined session from all {len(group)} sections?"):
+                return
+            for l in group:
+                self.project.lessons.pop(l.id, None)
+        else:
+            if not messagebox.askyesno("Remove Allotment", "Remove this subject allotment?"):
+                return
             del self.project.lessons[self.selected_lesson_id]
-            self.selected_lesson_id = None
-            self._clear_form()
-            self._refresh_allotments_table()
-            if self.on_update_callback:
-                self.on_update_callback()
+
+        self.selected_lesson_id = None
+        self._clear_form()
+        self._refresh_allotments_table()
+        self._refresh_align_tree()
+        if self.on_update_callback:
+            self.on_update_callback()
+
+    def _on_clear_alignment(self):
+        lesson = self.project.lessons.get(self.selected_lesson_id)
+        if not lesson:
+            messagebox.showwarning("Warning", "Select an allotted subject row first.")
+            return
+        if lesson.combined_group_id:
+            if not messagebox.askyesno("Clear Combined Session", "Break this combined session? The other sections' rows will be removed."):
+                return
+            self._dissolve_combined_group(lesson)
+        else:
+            lesson.sync_group_id = ""
+            lesson.sync_group_name = ""
+        self.var_all_sections.set(False)
+        self._refresh_allotments_table()
+        self._refresh_align_tree()
+        if self.on_update_callback:
+            self.on_update_callback()
 
     def _open_sync_wizard(self):
         from ui.dialogs.sync_group_dialog import SyncGroupWizardDialog
-        dlg = SyncGroupWizardDialog(self, self.project, on_applied=self._refresh_section_allotments)
+        dlg = SyncGroupWizardDialog(self, self.project, on_applied=self.refresh)
         dlg.grab_set()
 
     def _on_generate_timetable(self):

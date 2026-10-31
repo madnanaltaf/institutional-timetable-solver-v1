@@ -277,7 +277,7 @@ class TimetablePDFGenerator:
                     r_str = f"[{room.name}]" if room else ""
                     is_incharge = (sec and sec.class_teacher_id == matching.teacher_id)
                     badge = " ⭐" if is_incharge else ""
-                    sync_tag = " • Paired" if matching.sync_group_id else ""
+                    sync_tag = self._slot_tag(matching)
 
                     cell_p = Paragraph(
                         f"<font size={sub_fs} color='#0F172A'><b>{sub_name}</b>{sync_tag}</font><br/>"
@@ -325,7 +325,7 @@ class TimetablePDFGenerator:
                             r_str = f"[{room.name}]" if room else ""
                             is_incharge = (sec and sec.class_teacher_id == matching.teacher_id)
                             badge = " ⭐" if is_incharge else ""
-                            sync_tag = " • Paired" if matching.sync_group_id else ""
+                            sync_tag = self._slot_tag(matching)
 
                             cell_p = Paragraph(
                                 f"<font size={sub_fs} color='#0F172A'><b>{sub_name}</b>{sync_tag}</font><br/>"
@@ -342,6 +342,15 @@ class TimetablePDFGenerator:
         table = Table(table_data, colWidths=col_widths, rowHeights=row_heights, repeatRows=1)
         table.setStyle(TableStyle(t_style))
         return table
+
+    @staticmethod
+    def _slot_tag(slot: Any) -> str:
+        tags = []
+        if getattr(slot, "sync_group_id", ""):
+            tags.append("Paired")
+        if getattr(slot, "combined_group_id", ""):
+            tags.append("All Sections")
+        return f" • {' + '.join(tags)}" if tags else ""
 
     def _build_section_legend_table(self, section_id: str) -> Optional[Table]:
         lessons = [l for l in self.project.lessons.values() if l.section_id == section_id]
@@ -506,7 +515,7 @@ class TimetablePDFGenerator:
                     sec_name = sec.display_name if sec else matching.section_id
                     sub_name = sub.name if sub else matching.subject_id
                     r_name = f"[{room.name}]" if room else ""
-                    sync_tag = " • Paired" if matching.sync_group_id else ""
+                    sync_tag = self._slot_tag(matching)
 
                     cell_p = Paragraph(
                         f"<font size={sub_fs} color='#0F172A'><b>{sec_name}</b>{sync_tag}</font><br/>"
@@ -556,7 +565,7 @@ class TimetablePDFGenerator:
                             sec_name = sec.display_name if sec else matching.section_id
                             sub_name = sub.name if sub else matching.subject_id
                             r_name = f"[{room.name}]" if room else ""
-                            sync_tag = " • Paired" if matching.sync_group_id else ""
+                            sync_tag = self._slot_tag(matching)
 
                             cell_p = Paragraph(
                                 f"<font size={sub_fs} color='#0F172A'><b>{sec_name}</b>{sync_tag}</font><br/>"
@@ -643,7 +652,7 @@ class TimetablePDFGenerator:
                     sec.display_name if sec else s.section_id,
                     teacher.name if teacher else s.teacher_id,
                     room.name if room else "Classroom",
-                    f"{dur_lbl} ({'Sync Lab' if s.sync_group_id else 'Regular'})"
+                    f"{dur_lbl} ({'All Sections' if s.combined_group_id else ('Sync Lab' if s.sync_group_id else 'Regular')})"
                 ])
 
             table = Table(data, colWidths=[80, 110, 160, 160, 130, 100])

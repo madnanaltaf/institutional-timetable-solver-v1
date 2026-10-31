@@ -8,6 +8,7 @@ from tkinter import messagebox
 
 from models.timetable_data import TimetableProject
 from models.lesson import ScheduledSlot
+from solver.validator import ProjectValidator
 
 class EditSlotDialog(tb.Toplevel):
     def __init__(self, parent, project: TimetableProject, slot: ScheduledSlot, on_changed=None):
@@ -15,6 +16,7 @@ class EditSlotDialog(tb.Toplevel):
         self.project = project
         self.slot = slot
         self.on_changed = on_changed
+        self.group = project.get_alignment_group(slot)
 
         sub = self.project.subjects.get(slot.subject_id)
         sub_name = sub.name if sub else slot.subject_id
@@ -52,6 +54,15 @@ class EditSlotDialog(tb.Toplevel):
 
         content = tb.Frame(self, padding=20)
         content.pack(fill=BOTH, expand=True)
+
+        if len(self.group) > 1:
+            tb.Label(
+                content,
+                text=f"🔗 This lecture is aligned with {len(self.group) - 1} other section(s) — they move together.",
+                font=("Helvetica", 9, "bold"),
+                bootstyle="info",
+                wraplength=430
+            ).pack(anchor=W, pady=(0, 8))
 
         tb.Label(content, text="Move to New Time Slot:", font=("Helvetica", 10, "bold")).pack(anchor=W, pady=(0, 10))
 
@@ -146,6 +157,33 @@ class EditSlotDialog(tb.Toplevel):
             return text.split("[")[-1].rstrip("]")
         return ""
 
+    def _apply_target(self, target_day: str, target_period: int, target_teacher_id: str):
+        """Temporarily moves the aligned group. Returns the original state for rollback."""
+        originals = []
+        for s in self.group:
+            originals.append((s, s.day, s.period, s.teacher_id))
+            s.day = target_day
+            s.period = target_period
+            if s.id == self.slot.id or s.combined_group_id:
+                s.teacher_id = target_teacher_id
+        return originals
+
+    @staticmethod
+    def _restore_group(originals):
+        for s, day, period, teacher_id in originals:
+            s.day = day
+            s.period = period
+            s.teacher_id = teacher_id
+
+    def _collect_conflicts(self, target_day: str, target_period: int, target_teacher_id: str):
+        originals = self._apply_target(target_day, target_period, target_teacher_id)
+        issues = [
+            i for i in ProjectValidator(self.project).validate_schedule()
+            if i.severity == "ERROR"
+        ]
+        self._restore_group(originals)
+        return issues
+
     def _validate_slot(self, event):
         target_day = self.combo_day.get()
         p_str = self.combo_period.get()
@@ -156,55 +194,18 @@ class EditSlotDialog(tb.Toplevel):
         except ValueError:
             return
 
-        conflicts = []
-
-        # 0. Friday / Day period bounds check
-        day_max = self.project.institution.get_periods_for_day(target_day)
-        if target_period + self.slot.duration - 1 > day_max:
-            conflicts.append(f"Exceeds {target_day}'s limit ({day_max} periods max due to early dismissal).")
-
-        # 1. Recess check
-        break_after = self.project.institution.break_after_period
-        if self.slot.duration > 1:
-            if target_period <= break_after < target_period + self.slot.duration:
-                conflicts.append("Cannot span multi-period block across recess break.")
-
-        # 2. Check collision with other slots
-        for s in self.project.schedule:
-            if s.id == self.slot.id:
-                continue
-
-            # Does slot s overlap with target_period..target_period + duration?
-            if s.day == target_day:
-                s_end = s.period + s.duration
-                target_end = target_period + self.slot.duration
-
-                overlap = not (target_end <= s.period or target_period >= s_end)
-                if overlap:
-                    if s.section_id == self.slot.section_id:
-                        sub = self.project.subjects.get(s.subject_id)
-                        conflicts.append(f"Section conflict: Section already taking '{sub.name if sub else s.subject_id}'.")
-                    if s.teacher_id == target_teacher_id:
-                        sec = self.project.sections.get(s.section_id)
-                        conflicts.append(f"Teacher conflict: Selected teacher is teaching '{sec.display_name if sec else s.section_id}'.")
-                    if s.room_id and s.room_id == self.slot.room_id:
-                        room = self.project.classrooms.get(s.room_id)
-                        conflicts.append(f"Room conflict: '{room.name if room else s.room_id}' is occupied.")
-
-        # 3. Teacher unavailability check
-        teacher = self.project.teachers.get(target_teacher_id)
-        if teacher:
-            for p in range(target_period, target_period + self.slot.duration):
-                if not teacher.is_available(target_day, p):
-                    conflicts.append(f"Teacher '{teacher.name}' is marked unavailable on {target_day} P{p}.")
-
-        if conflicts:
-            msg = "⚠️ Conflicts detected:\n" + "\n".join([f"• {c}" for c in conflicts])
+        issues = self._collect_conflicts(target_day, target_period, target_teacher_id)
+        if issues:
+            msg = "⚠️ Conflicts detected:\n" + "\n".join(f"• {i.description}" for i in issues)
             self.lbl_conflict_status.config(text=msg, bootstyle="danger")
             self.btn_apply.config(state="disabled")
         else:
+            extra = (
+                f"\n\n🔗 {len(self.group) - 1} aligned section(s) will move with this lecture."
+                if len(self.group) > 1 else ""
+            )
             self.lbl_conflict_status.config(
-                text="✓ Target slot and teacher are completely free and conflict-free!",
+                text="✓ Target slot and teacher are completely free and conflict-free!" + extra,
                 bootstyle="success"
             )
             self.btn_apply.config(state="normal")
@@ -219,10 +220,18 @@ class EditSlotDialog(tb.Toplevel):
         except ValueError:
             return
 
-        self.slot.day = target_day
-        self.slot.period = target_period
-        self.slot.teacher_id = target_teacher_id
-        self.slot.is_locked = bool(self.var_locked.get())
+        issues = self._collect_conflicts(target_day, target_period, target_teacher_id)
+        if issues:
+            messagebox.showerror(
+                "Cannot Move Lecture",
+                "The move would create conflict(s):\n\n" + "\n".join(f"• {i.description}" for i in issues[:8])
+            )
+            return
+
+        self._apply_target(target_day, target_period, target_teacher_id)
+        lock_state = bool(self.var_locked.get())
+        for s in self.group:
+            s.is_locked = lock_state
 
         if self.on_changed:
             self.on_changed()

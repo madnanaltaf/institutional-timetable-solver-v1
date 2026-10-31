@@ -20,6 +20,8 @@ class LessonAllocation:
     block_size: int = 1  # 1 = single period, 2 = 2-period lab block, 3 = 3-period block
     sync_group_id: str = ""  # Parallel group tag (e.g. for simultaneous CS Lab Sec A & Chem Lab Sec B)
     sync_group_name: str = ""
+    combined_group_id: str = ""  # All-sections session tag (same lesson taught to every section of a class)
+    all_sections: bool = False  # True when this lesson is part of a combined all-sections session
     priority: int = 3  # 1 to 5 (5 highest)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -45,6 +47,8 @@ class ScheduledSlot:
     period: int
     duration: int = 1  # 1 for single period, 2 for double block
     sync_group_id: str = ""
+    combined_group_id: str = ""
+    all_sections: bool = False
     is_locked: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
@@ -63,5 +67,7 @@ class ScheduledSlot:
             period=data["period"],
             duration=data.get("duration", 1),
             sync_group_id=data.get("sync_group_id", ""),
+            combined_group_id=data.get("combined_group_id", ""),
+            all_sections=data.get("all_sections", False),
             is_locked=data.get("is_locked", False)
         )
